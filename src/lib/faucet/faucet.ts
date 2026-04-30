@@ -1,41 +1,43 @@
-import {
-  normalizeApiBaseUrl,
-  readApiBaseUrlFromEnv,
-  requestJson,
-  withBearerToken,
-} from "../api.ts";
+import { normalizeApiBaseUrl, requestJson } from "../api.ts";
 import type {
   FaucetClientOptions,
   FaucetUsdcBalanceResponse,
+  FaucetUsdcRequest,
   FaucetUsdcResponse,
 } from "./types.ts";
 
+function readViteEnv(key: "VITE_API_BASE_URL"): string | undefined {
+  return import.meta.env?.[key];
+}
+
 export interface FaucetClient {
+  requestUsdc(request: FaucetUsdcRequest): Promise<FaucetUsdcResponse>;
   fetchUsdcBalance(address: string): Promise<FaucetUsdcBalanceResponse>;
-  requestUsdc(token: string): Promise<FaucetUsdcResponse>;
 }
 
 export function createFaucetClient(options: FaucetClientOptions = {}): FaucetClient {
   const baseUrl = normalizeApiBaseUrl(options.baseUrl);
 
   return {
-    fetchUsdcBalance(address) {
-      return requestJson<FaucetUsdcBalanceResponse>(baseUrl, "/faucet/usdc/balance", {
-        query: { address },
+    requestUsdc(request) {
+      return requestJson<FaucetUsdcResponse>(baseUrl, "/faucet/usdc", {
+        method: "POST",
+        json: request,
       });
     },
 
-    requestUsdc(token) {
-      return requestJson<FaucetUsdcResponse>(baseUrl, "/faucet/usdc", {
-        method: "POST",
-        headers: withBearerToken(token),
+    fetchUsdcBalance(address) {
+      return requestJson<FaucetUsdcBalanceResponse>(baseUrl, "/faucet/usdc/balance", {
+        query: {
+          address,
+        },
       });
     },
   };
 }
 
 export const faucetClient = createFaucetClient({
-  baseUrl: readApiBaseUrlFromEnv(),
+  baseUrl: readViteEnv("VITE_API_BASE_URL"),
 });
 
 export { ApiError } from "../api.ts";

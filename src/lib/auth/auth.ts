@@ -1,9 +1,3 @@
-import {
-  normalizeApiBaseUrl,
-  readApiBaseUrlFromEnv,
-  requestJson,
-  withBearerToken,
-} from "../api.ts";
 import type {
   AuthClientOptions,
   AuthResponse,
@@ -13,6 +7,26 @@ import type {
   WalletChallengeResponse,
   WalletConnectRequest,
 } from "./types.ts";
+import {
+  buildApiUrl,
+  normalizeApiBaseUrl,
+  requestJson,
+} from "../api.ts";
+export { ApiError } from "../api.ts";
+
+function readViteEnv(
+  key: "VITE_API_BASE_URL" | "VITE_GOOGLE_CLIENT_ID",
+): string | undefined {
+  return import.meta.env?.[key];
+}
+
+export function normalizeAuthBaseUrl(rawBaseUrl: string | undefined): string {
+  return normalizeApiBaseUrl(rawBaseUrl);
+}
+
+export function buildAuthUrl(baseUrl: string, path: string): string {
+  return buildApiUrl(baseUrl, path);
+}
 
 export interface AuthClient {
   signInWithGoogle(request: GoogleSignInRequest): Promise<AuthResponse>;
@@ -22,7 +36,7 @@ export interface AuthClient {
 }
 
 export function createAuthClient(options: AuthClientOptions = {}): AuthClient {
-  const baseUrl = normalizeApiBaseUrl(options.baseUrl);
+  const baseUrl = normalizeAuthBaseUrl(options.baseUrl);
 
   return {
     signInWithGoogle(request) {
@@ -48,14 +62,16 @@ export function createAuthClient(options: AuthClientOptions = {}): AuthClient {
 
     fetchMe(token) {
       return requestJson<MeResponse>(baseUrl, "/auth/me", {
-        headers: withBearerToken(token),
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
     },
   };
 }
 
-export const authClient = createAuthClient({
-  baseUrl: readApiBaseUrlFromEnv(),
-});
+export const GOOGLE_CLIENT_ID = readViteEnv("VITE_GOOGLE_CLIENT_ID")?.trim() ?? "";
 
-export { ApiError } from "../api.ts";
+export const authClient = createAuthClient({
+  baseUrl: readViteEnv("VITE_API_BASE_URL"),
+});

@@ -1,13 +1,7 @@
-import type { IsoDateTimeString, Uuid } from "../types.ts";
-
-export interface AuthClientOptions {
-  baseUrl?: string;
-}
-
 export interface GoogleSignInRequest {
   credential: string;
-  g_csrf_token?: string | null;
-  client_id?: string | null;
+  g_csrf_token?: string;
+  client_id?: string;
 }
 
 export interface WalletChallengeRequest {
@@ -15,9 +9,9 @@ export interface WalletChallengeRequest {
 }
 
 export interface WalletConnectRequest {
-  challenge_id: Uuid;
+  challenge_id: string;
   signature: string;
-  username?: string | null;
+  username?: string;
 }
 
 export interface WalletResponse {
@@ -28,18 +22,18 @@ export interface WalletResponse {
   owner_provider: string | null;
   factory_address: string | null;
   entry_point_address: string | null;
-  created_at: IsoDateTimeString;
+  created_at: string;
 }
 
 export interface UserResponse {
-  id: Uuid;
+  id: string;
   email: string | null;
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
   wallet: WalletResponse | null;
-  created_at: IsoDateTimeString;
-  updated_at: IsoDateTimeString;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthResponse {
@@ -48,9 +42,9 @@ export interface AuthResponse {
 }
 
 export interface WalletChallengeResponse {
-  challenge_id: Uuid;
+  challenge_id: string;
   message: string;
-  expires_at: IsoDateTimeString;
+  expires_at: string;
 }
 
 export interface MeResponse {
@@ -60,3 +54,9 @@ export interface MeResponse {
 export interface ErrorResponse {
   error: string;
 }
+
+export interface AuthClientOptions {
+  baseUrl?: string;
+}
+
+export type AuthAsyncStatus = "idle" | "pending" | "success" | "error";
