@@ -41,6 +41,26 @@ function sampleFactoryStatus() {
   };
 }
 
+function sampleAssetPaymentTokenQuoteResponse(marketCurrency = "usd") {
+  return {
+    market_currency: marketCurrency,
+    payment_token_coin_id: "usd-coin",
+    payment_token_address: "0xusdc",
+    payment_token_symbol: "USDC",
+    payment_token_decimals: 6,
+    market_currency_per_payment_token: "1600",
+    usd_per_payment_token: "1",
+    last_updated_at: 1780000000,
+    amount: {
+      market_currency_amount: "1000",
+      payment_token_amount: "0.625",
+      payment_token_base_units: "625000",
+    },
+    subscription_price: null,
+    redemption_price: null,
+  };
+}
+
 function sampleAssetType() {
   return {
     asset_type_id: assetTypeId,
@@ -65,6 +85,9 @@ function sampleAsset() {
     symbol: "OFF",
     image_url: "https://example.com/office.png",
     summary: "Prime office exposure",
+    market_segment: "real-estate",
+    suggested_internal_tags: ["income", "office"],
+    sources: ["https://example.com/office-fund"],
     featured: true,
     visible: true,
     searchable: true,
@@ -126,30 +149,76 @@ function sampleTransferCheck() {
   };
 }
 
+function sampleAssetDetailResponse() {
+  return {
+    asset: sampleAsset(),
+    treasury: {
+      asset_address: assetAddress,
+      balance: "250000",
+      reserved_yield: "12000",
+      available_liquidity: "238000",
+      last_tx_hash: "0xtreasuryasset",
+      updated_at: "2026-04-30T10:00:00Z",
+    },
+    compliance_rules: {
+      asset_address: assetAddress,
+      transfers_enabled: true,
+      subscriptions_enabled: true,
+      redemptions_enabled: true,
+      requires_accreditation: false,
+      min_investment: "1000",
+      max_investor_balance: "1000000",
+      last_tx_hash: "0xrules",
+      updated_at: "2026-04-30T10:00:00Z",
+    },
+    valuation: {
+      asset_address: assetAddress,
+      asset_value: "1000000",
+      nav_per_token: "100",
+      onchain_updated_at: 1780000000,
+      reference_id: "NAV-1",
+      reference_id_text: "NAV-1",
+      last_tx_hash: "0xvaluation",
+      updated_at: "2026-04-30T10:00:00Z",
+    },
+    holder: sampleHolder(),
+    unavailable_sections: [],
+  };
+}
+
+function sampleAssetHistoryResponse() {
+  return {
+    asset_address: assetAddress,
+    range: "30d",
+    interval: "1d",
+    last_updated_at: 1780000000,
+    primary_market_price: [
+      {
+        timestamp: 1770000000,
+        value: "100",
+        open: "99",
+        high: "101",
+        low: "98",
+        close: "100",
+      },
+    ],
+    underlying_market_price: [
+      {
+        timestamp: 1770000000,
+        value: "98",
+        open: "97",
+        high: "99",
+        low: "96",
+        close: "98",
+      },
+    ],
+  };
+}
+
 function sampleAssetTypeWriteResponse() {
   return {
     tx_hash: "0xwrite-type",
     asset_type: sampleAssetType(),
-  };
-}
-
-function sampleFactoryWriteResponse() {
-  return {
-    tx_hash: "0xwrite-factory",
-    factory: sampleFactoryStatus(),
-  };
-}
-
-function sampleAssetWriteResponse() {
-  return {
-    tx_hash: "0xwrite-asset",
-    asset: sampleAsset(),
-  };
-}
-
-function sampleAssetCatalogWriteResponse() {
-  return {
-    asset: sampleAsset(),
   };
 }
 
@@ -188,6 +257,33 @@ function assertCaseRequest(call: FetchCall | undefined, endpoint: EndpointCase):
 }
 
 const publicCases: EndpointCase[] = [
+  {
+    name: "fetchPaymentTokenQuote sends GET /market/quotes/payment-token",
+    run: client =>
+      client.fetchPaymentTokenQuote({
+        market_currency: "usd",
+        amount: "1000",
+      }),
+    url: `${apiBaseUrl}/market/quotes/payment-token?market_currency=usd&amount=1000`,
+    response: sampleAssetPaymentTokenQuoteResponse("usd"),
+  },
+  {
+    name: "fetchNgnPaymentTokenQuote sends GET /market/quotes/ngn-payment-token",
+    run: client =>
+      client.fetchNgnPaymentTokenQuote({
+        amount: "5000",
+      }),
+    url: `${apiBaseUrl}/market/quotes/ngn-payment-token?amount=5000`,
+    response: sampleAssetPaymentTokenQuoteResponse("ngn"),
+  },
+  {
+    name: "fetchSupportedCurrencies sends GET /market/supported-currencies",
+    run: client => client.fetchSupportedCurrencies(),
+    url: `${apiBaseUrl}/market/supported-currencies`,
+    response: {
+      supported_currencies: ["ngn", "usd"],
+    },
+  },
   {
     name: "fetchFactoryStatus sends GET /assets/factory",
     run: client => client.fetchFactoryStatus(),
@@ -240,16 +336,81 @@ const publicCases: EndpointCase[] = [
     response: sampleAssetListResponse(),
   },
   {
+    name: "fetchAssetHistoryByProposal sends GET /assets/proposals/{proposal_id}/history",
+    run: client =>
+      client.fetchAssetHistoryByProposal(proposalId, {
+        range: "30d",
+      }),
+    url: `${apiBaseUrl}/assets/proposals/${encodeURIComponent(proposalId)}/history?range=30d`,
+    response: sampleAssetHistoryResponse(),
+  },
+  {
+    name: "fetchAssetDetailByProposal sends GET /assets/proposals/{proposal_id}/detail",
+    run: client =>
+      client.fetchAssetDetailByProposal(proposalId, {
+        wallet_address: walletAddress,
+      }),
+    url:
+      `${apiBaseUrl}/assets/proposals/${encodeURIComponent(proposalId)}/detail` +
+      `?wallet_address=${encodeURIComponent(walletAddress)}`,
+    response: sampleAssetDetailResponse(),
+  },
+  {
     name: "fetchAssetByProposal sends GET /assets/proposals/{proposal_id}",
     run: client => client.fetchAssetByProposal(proposalId),
     url: `${apiBaseUrl}/assets/proposals/${encodeURIComponent(proposalId)}`,
     response: sampleAsset(),
   },
   {
+    name: "fetchAssetHistoryBySlug sends GET /assets/slug/{slug}/history",
+    run: client =>
+      client.fetchAssetHistoryBySlug(slug, {
+        range: "7d",
+      }),
+    url: `${apiBaseUrl}/assets/slug/${encodeURIComponent(slug)}/history?range=7d`,
+    response: sampleAssetHistoryResponse(),
+  },
+  {
+    name: "fetchAssetDetailBySlug sends GET /assets/slug/{slug}/detail",
+    run: client =>
+      client.fetchAssetDetailBySlug(slug, {
+        wallet_address: walletAddress,
+      }),
+    url:
+      `${apiBaseUrl}/assets/slug/${encodeURIComponent(slug)}/detail` +
+      `?wallet_address=${encodeURIComponent(walletAddress)}`,
+    response: sampleAssetDetailResponse(),
+  },
+  {
     name: "fetchAssetBySlug sends GET /assets/slug/{slug}",
     run: client => client.fetchAssetBySlug(slug),
     url: `${apiBaseUrl}/assets/slug/${encodeURIComponent(slug)}`,
     response: sampleAsset(),
+  },
+  {
+    name: "fetchAssetHistory sends GET /assets/{asset_address}/history",
+    run: client =>
+      client.fetchAssetHistory(assetAddress, {
+        range: "90d",
+      }),
+    url: `${apiBaseUrl}/assets/${encodeURIComponent(assetAddress)}/history?range=90d`,
+    response: sampleAssetHistoryResponse(),
+  },
+  {
+    name: "fetchAssetDetail sends GET /assets/{asset_address}/detail",
+    run: client =>
+      client.fetchAssetDetail(assetAddress, {
+        wallet_address: walletAddress,
+      }),
+    url:
+      `${apiBaseUrl}/assets/${encodeURIComponent(assetAddress)}/detail` +
+      `?wallet_address=${encodeURIComponent(walletAddress)}`,
+    response: sampleAssetDetailResponse(),
+    assertResponse: response =>
+      assert.equal(
+        (response as { holder: { wallet_address: string } | null }).holder?.wallet_address,
+        walletAddress,
+      ),
   },
   {
     name: "fetchAsset sends GET /assets/{asset_address}",
@@ -307,315 +468,6 @@ const publicCases: EndpointCase[] = [
       data: "0x00",
     },
     response: sampleTransferCheck(),
-  },
-];
-
-const adminCases: EndpointCase[] = [
-  {
-    name: "registerAssetType posts /admin/assets/types",
-    run: client =>
-      client.registerAssetType(sessionToken, {
-        asset_type_id: assetTypeId,
-        asset_type_name: "Real Estate",
-        implementation_address: "0ximpl",
-      }),
-    url: `${apiBaseUrl}/admin/assets/types`,
-    method: "POST",
-    token: sessionToken,
-    body: {
-      asset_type_id: assetTypeId,
-      asset_type_name: "Real Estate",
-      implementation_address: "0ximpl",
-    },
-    response: sampleAssetTypeWriteResponse(),
-  },
-  {
-    name: "unregisterAssetType sends DELETE /admin/assets/types/{asset_type_id}",
-    run: client => client.unregisterAssetType(sessionToken, assetTypeId),
-    url: `${apiBaseUrl}/admin/assets/types/${encodeURIComponent(assetTypeId)}`,
-    method: "DELETE",
-    token: sessionToken,
-    response: sampleAssetTypeWriteResponse(),
-  },
-  {
-    name: "pauseFactory posts /admin/assets/factory/pause",
-    run: client => client.pauseFactory(sessionToken),
-    url: `${apiBaseUrl}/admin/assets/factory/pause`,
-    method: "POST",
-    token: sessionToken,
-    response: sampleFactoryWriteResponse(),
-  },
-  {
-    name: "unpauseFactory posts /admin/assets/factory/unpause",
-    run: client => client.unpauseFactory(sessionToken),
-    url: `${apiBaseUrl}/admin/assets/factory/unpause`,
-    method: "POST",
-    token: sessionToken,
-    response: sampleFactoryWriteResponse(),
-  },
-  {
-    name: "createAsset posts /admin/assets",
-    run: client =>
-      client.createAsset(sessionToken, {
-        proposal_id: proposalId,
-        asset_type_id: assetTypeId,
-        name: "Office Fund",
-        symbol: "OFF",
-        max_supply: "1000000",
-        subscription_price: "100",
-        redemption_price: "95",
-        self_service_purchase_enabled: true,
-        metadata_hash: "0xmetadata",
-        slug,
-        image_url: "https://example.com/office.png",
-        summary: "Prime office exposure",
-        featured: true,
-        visible: true,
-        searchable: true,
-      }),
-    url: `${apiBaseUrl}/admin/assets`,
-    method: "POST",
-    token: sessionToken,
-    body: {
-      proposal_id: proposalId,
-      asset_type_id: assetTypeId,
-      name: "Office Fund",
-      symbol: "OFF",
-      max_supply: "1000000",
-      subscription_price: "100",
-      redemption_price: "95",
-      self_service_purchase_enabled: true,
-      metadata_hash: "0xmetadata",
-      slug,
-      image_url: "https://example.com/office.png",
-      summary: "Prime office exposure",
-      featured: true,
-      visible: true,
-      searchable: true,
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "issueAsset posts /admin/assets/{asset_address}/issue",
-    run: client =>
-      client.issueAsset(sessionToken, assetAddress, {
-        recipient_wallet: walletAddress,
-        amount: "100",
-        data: "0x00",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/issue`,
-    method: "POST",
-    token: sessionToken,
-    body: {
-      recipient_wallet: walletAddress,
-      amount: "100",
-      data: "0x00",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "burnAsset posts /admin/assets/{asset_address}/burn",
-    run: client =>
-      client.burnAsset(sessionToken, assetAddress, {
-        from_wallet: walletAddress,
-        amount: "25",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/burn`,
-    method: "POST",
-    token: sessionToken,
-    body: {
-      from_wallet: walletAddress,
-      amount: "25",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "setAssetState puts /admin/assets/{asset_address}/state",
-    run: client =>
-      client.setAssetState(sessionToken, assetAddress, {
-        state: "paused",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/state`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      state: "paused",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "setSubscriptionPrice puts /admin/assets/{asset_address}/subscription-price",
-    run: client =>
-      client.setSubscriptionPrice(sessionToken, assetAddress, {
-        value: "101",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/subscription-price`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      value: "101",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "setRedemptionPrice puts /admin/assets/{asset_address}/redemption-price",
-    run: client =>
-      client.setRedemptionPrice(sessionToken, assetAddress, {
-        value: "96",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/redemption-price`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      value: "96",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "setPricing puts /admin/assets/{asset_address}/pricing",
-    run: client =>
-      client.setPricing(sessionToken, assetAddress, {
-        subscription_price: "101",
-        redemption_price: "96",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/pricing`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      subscription_price: "101",
-      redemption_price: "96",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "setSelfServicePurchaseEnabled puts /admin/assets/{asset_address}/self-service-purchase",
-    run: client =>
-      client.setSelfServicePurchaseEnabled(sessionToken, assetAddress, {
-        enabled: false,
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/self-service-purchase`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      enabled: false,
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "setMetadataHash puts /admin/assets/{asset_address}/metadata",
-    run: client =>
-      client.setMetadataHash(sessionToken, assetAddress, {
-        metadata_hash: "0xnewhash",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/metadata`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      metadata_hash: "0xnewhash",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "setAssetCatalog puts /admin/assets/{asset_address}/catalog",
-    run: client =>
-      client.setAssetCatalog(sessionToken, assetAddress, {
-        slug,
-        image_url: "https://example.com/office.png",
-        summary: "Updated summary",
-        featured: true,
-        visible: true,
-        searchable: true,
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/catalog`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      slug,
-      image_url: "https://example.com/office.png",
-      summary: "Updated summary",
-      featured: true,
-      visible: true,
-      searchable: true,
-    },
-    response: sampleAssetCatalogWriteResponse(),
-  },
-  {
-    name: "setComplianceRegistry puts /admin/assets/{asset_address}/compliance-registry",
-    run: client =>
-      client.setComplianceRegistry(sessionToken, assetAddress, {
-        compliance_registry_address: "0xregistry",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/compliance-registry`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      compliance_registry_address: "0xregistry",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "setTreasury puts /admin/assets/{asset_address}/treasury",
-    run: client =>
-      client.setTreasury(sessionToken, assetAddress, {
-        treasury_address: "0xtreasury",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/treasury`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      treasury_address: "0xtreasury",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "disableController posts /admin/assets/{asset_address}/controller/disable",
-    run: client => client.disableController(sessionToken, assetAddress),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/controller/disable`,
-    method: "POST",
-    token: sessionToken,
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "controllerTransfer posts /admin/assets/{asset_address}/controller/transfer",
-    run: client =>
-      client.controllerTransfer(sessionToken, assetAddress, {
-        from_wallet: "0xfrom",
-        to_wallet: "0xto",
-        amount: "10",
-        data: "0x00",
-        operator_data: "0x01",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/controller/transfer`,
-    method: "POST",
-    token: sessionToken,
-    body: {
-      from_wallet: "0xfrom",
-      to_wallet: "0xto",
-      amount: "10",
-      data: "0x00",
-      operator_data: "0x01",
-    },
-    response: sampleAssetWriteResponse(),
-  },
-  {
-    name: "processRedemption posts /admin/assets/{asset_address}/redemptions/process",
-    run: client =>
-      client.processRedemption(sessionToken, assetAddress, {
-        investor_wallet: walletAddress,
-        amount: "5",
-        recipient_wallet: "0xrecipient",
-        data: "0x02",
-      }),
-    url: `${apiBaseUrl}/admin/assets/${encodeURIComponent(assetAddress)}/redemptions/process`,
-    method: "POST",
-    token: sessionToken,
-    body: {
-      investor_wallet: walletAddress,
-      amount: "5",
-      recipient_wallet: "0xrecipient",
-      data: "0x02",
-    },
-    response: sampleAssetWriteResponse(),
   },
 ];
 
@@ -700,7 +552,7 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-for (const endpoint of [...publicCases, ...adminCases, ...userCases]) {
+for (const endpoint of [...publicCases, ...userCases]) {
   test(endpoint.name, async () => {
     const client = createAssetClient({ baseUrl: `${apiBaseUrl}/` });
     const calls: FetchCall[] = [];

@@ -21,6 +21,14 @@ export class ApiError extends Error {
   }
 }
 
+export function getErrorMessage(error: unknown, fallback = "Request failed"): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export function readApiBaseUrlFromEnv(): string | undefined {
   return import.meta.env?.VITE_API_BASE_URL;
 }

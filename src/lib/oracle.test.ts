@@ -12,7 +12,6 @@ import {
 } from "../../test/http.ts";
 
 const apiBaseUrl = "http://127.0.0.1:8080";
-const sessionToken = "session-token";
 const assetAddress = "0xasset";
 const oracleAddress = "0xoracle";
 const documentType = "NAV_REPORT";
@@ -108,94 +107,6 @@ const cases: EndpointCase[] = [
       `${apiBaseUrl}/oracle/assets/${encodeURIComponent(assetAddress)}` +
       `/documents/${encodeURIComponent(documentType)}`,
     response: sampleDocument(),
-  },
-  {
-    name: "setTrustedOracle puts /admin/oracle/trusted-oracles/{oracle_address}",
-    run: client =>
-      client.setTrustedOracle(sessionToken, oracleAddress, {
-        trusted: true,
-      }),
-    url: `${apiBaseUrl}/admin/oracle/trusted-oracles/${encodeURIComponent(oracleAddress)}`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      trusted: true,
-    },
-    response: {
-      tx_hash: "0xset-oracle",
-      trusted_oracle: sampleTrustedOracle(),
-    },
-  },
-  {
-    name: "submitValuation posts /admin/oracle/valuations",
-    run: client =>
-      client.submitValuation(sessionToken, {
-        asset_address: assetAddress,
-        asset_value: "1000000",
-        nav_per_token: "100",
-        reference_id: "REF-1",
-      }),
-    url: `${apiBaseUrl}/admin/oracle/valuations`,
-    method: "POST",
-    token: sessionToken,
-    body: {
-      asset_address: assetAddress,
-      asset_value: "1000000",
-      nav_per_token: "100",
-      reference_id: "REF-1",
-    },
-    response: {
-      tx_hash: "0xsubmit-valuation",
-      valuation: sampleValuation(),
-    },
-  },
-  {
-    name: "submitValuationAndSyncPricing posts /admin/oracle/valuations/sync-pricing",
-    run: client =>
-      client.submitValuationAndSyncPricing(sessionToken, {
-        asset_address: assetAddress,
-        asset_value: "1000000",
-        nav_per_token: "100",
-        subscription_price: "101",
-        redemption_price: "96",
-        reference_id: "REF-1",
-      }),
-    url: `${apiBaseUrl}/admin/oracle/valuations/sync-pricing`,
-    method: "POST",
-    token: sessionToken,
-    body: {
-      asset_address: assetAddress,
-      asset_value: "1000000",
-      nav_per_token: "100",
-      subscription_price: "101",
-      redemption_price: "96",
-      reference_id: "REF-1",
-    },
-    response: {
-      tx_hash: "0xsync-pricing",
-      valuation: sampleValuation(),
-    },
-  },
-  {
-    name: "anchorDocument puts /admin/oracle/assets/{asset_address}/documents/{document_type}",
-    run: client =>
-      client.anchorDocument(sessionToken, assetAddress, documentType, {
-        document_hash: "0xdochash",
-        reference_id: "REF-1",
-      }),
-    url:
-      `${apiBaseUrl}/admin/oracle/assets/${encodeURIComponent(assetAddress)}` +
-      `/documents/${encodeURIComponent(documentType)}`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      document_hash: "0xdochash",
-      reference_id: "REF-1",
-    },
-    response: {
-      tx_hash: "0xanchor-document",
-      document: sampleDocument(),
-    },
   },
 ];
 

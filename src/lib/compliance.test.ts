@@ -12,7 +12,6 @@ import {
 } from "../../test/http.ts";
 
 const apiBaseUrl = "http://127.0.0.1:8080";
-const sessionToken = "session-token";
 const assetAddress = "0xasset";
 const walletAddress = "0xwallet";
 const jurisdiction = "US";
@@ -103,101 +102,10 @@ const cases: EndpointCase[] = [
     response: sampleInvestor(),
   },
   {
-    name: "upsertInvestor puts /admin/compliance/investors/{wallet}",
-    run: client =>
-      client.upsertInvestor(sessionToken, walletAddress, {
-        is_verified: true,
-        is_accredited: true,
-        is_frozen: false,
-        valid_until: 1780000000,
-        jurisdiction,
-        external_ref: "INV-1",
-      }),
-    url: `${apiBaseUrl}/admin/compliance/investors/${encodeURIComponent(walletAddress)}`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      is_verified: true,
-      is_accredited: true,
-      is_frozen: false,
-      valid_until: 1780000000,
-      jurisdiction,
-      external_ref: "INV-1",
-    },
-    response: {
-      tx_hash: "0xupsert-investor",
-      investor: sampleInvestor(),
-    },
-  },
-  {
-    name: "batchUpsertInvestors posts /admin/compliance/investors/batch",
-    run: client =>
-      client.batchUpsertInvestors(sessionToken, {
-        investors: [
-          {
-            wallet_address: walletAddress,
-            is_verified: true,
-            is_accredited: true,
-            is_frozen: false,
-            valid_until: 1780000000,
-            jurisdiction,
-            external_ref: "INV-1",
-          },
-        ],
-      }),
-    url: `${apiBaseUrl}/admin/compliance/investors/batch`,
-    method: "POST",
-    token: sessionToken,
-    body: {
-      investors: [
-        {
-          wallet_address: walletAddress,
-          is_verified: true,
-          is_accredited: true,
-          is_frozen: false,
-          valid_until: 1780000000,
-          jurisdiction,
-          external_ref: "INV-1",
-        },
-      ],
-    },
-    response: {
-      tx_hash: "0xbatch-investors",
-      investors: [sampleInvestor()],
-    },
-  },
-  {
     name: "fetchAssetRules sends GET /compliance/assets/{asset}/rules",
     run: client => client.fetchAssetRules(assetAddress),
     url: `${apiBaseUrl}/compliance/assets/${encodeURIComponent(assetAddress)}/rules`,
     response: sampleAssetRules(),
-  },
-  {
-    name: "setAssetRules puts /admin/compliance/assets/{asset}/rules",
-    run: client =>
-      client.setAssetRules(sessionToken, assetAddress, {
-        transfers_enabled: true,
-        subscriptions_enabled: true,
-        redemptions_enabled: true,
-        requires_accreditation: false,
-        min_investment: "1000",
-        max_investor_balance: "1000000",
-      }),
-    url: `${apiBaseUrl}/admin/compliance/assets/${encodeURIComponent(assetAddress)}/rules`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      transfers_enabled: true,
-      subscriptions_enabled: true,
-      redemptions_enabled: true,
-      requires_accreditation: false,
-      min_investment: "1000",
-      max_investor_balance: "1000000",
-    },
-    response: {
-      tx_hash: "0xset-rules",
-      asset_rules: sampleAssetRules(),
-    },
   },
   {
     name: "fetchJurisdictionRestriction sends GET /compliance/assets/{asset}/jurisdictions/{jurisdiction}",
@@ -206,25 +114,6 @@ const cases: EndpointCase[] = [
       `${apiBaseUrl}/compliance/assets/${encodeURIComponent(assetAddress)}` +
       `/jurisdictions/${encodeURIComponent(jurisdiction)}`,
     response: sampleRestriction(),
-  },
-  {
-    name: "setJurisdictionRestriction puts /admin/compliance/assets/{asset}/jurisdictions/{jurisdiction}",
-    run: client =>
-      client.setJurisdictionRestriction(sessionToken, assetAddress, jurisdiction, {
-        restricted: false,
-      }),
-    url:
-      `${apiBaseUrl}/admin/compliance/assets/${encodeURIComponent(assetAddress)}` +
-      `/jurisdictions/${encodeURIComponent(jurisdiction)}`,
-    method: "PUT",
-    token: sessionToken,
-    body: {
-      restricted: false,
-    },
-    response: {
-      tx_hash: "0xset-restriction",
-      restriction: sampleRestriction(),
-    },
   },
   {
     name: "checkSubscribe posts /compliance/check/subscribe",

@@ -5,6 +5,7 @@ export type { ParsedUsdcAmountInput } from "./amount.ts";
 export type {
   FaucetClientOptions,
   FaucetUsdcBalanceResponse,
+  FaucetUsdcLegacyRequest,
   FaucetUsdcRequest,
   FaucetUsdcResponse,
 } from "./types.ts";

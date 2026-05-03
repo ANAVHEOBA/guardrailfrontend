@@ -1,6 +1,5 @@
 export * from "./api.ts";
 export * from "./types.ts";
-export * from "./admin/index.ts";
 export * from "./asset/index.ts";
 export * from "./auth/index.ts";
 export * from "./compliance/index.ts";

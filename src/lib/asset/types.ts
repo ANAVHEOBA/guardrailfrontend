@@ -1,3 +1,6 @@
+import type { ComplianceAssetRulesResponse } from "../compliance/types.ts";
+import type { OracleValuationResponse } from "../oracle/types.ts";
+import type { TreasuryAssetResponse } from "../treasury/types.ts";
 import type { IsoDateTimeString } from "../types.ts";
 
 export interface AssetClientOptions {
@@ -12,6 +15,21 @@ export interface ListAssetsQuery {
   featured?: boolean | null;
   limit?: number | null;
   offset?: number | null;
+}
+
+export interface AssetDetailQuery {
+  wallet_address?: string | null;
+}
+
+export interface AssetHistoryQuery {
+  range?: string | null;
+}
+
+export interface AssetQuoteQuery {
+  market_currency?: string | null;
+  amount?: string | null;
+  subscription_price?: string | null;
+  redemption_price?: string | null;
 }
 
 export interface AdminRegisterAssetTypeRequest {
@@ -33,6 +51,9 @@ export interface AdminCreateAssetRequest {
   slug?: string | null;
   image_url?: string | null;
   summary?: string | null;
+  market_segment?: string | null;
+  suggested_internal_tags?: string[];
+  sources?: string[];
   featured?: boolean;
   visible?: boolean;
   searchable?: boolean;
@@ -74,6 +95,9 @@ export interface AdminSetAssetCatalogRequest {
   slug: string;
   image_url?: string | null;
   summary?: string | null;
+  market_segment?: string | null;
+  suggested_internal_tags?: string[];
+  sources?: string[];
   featured?: boolean;
   visible?: boolean;
   searchable?: boolean;
@@ -164,6 +188,9 @@ export interface AssetResponse {
   symbol: string;
   image_url: string | null;
   summary: string | null;
+  market_segment: string | null;
+  suggested_internal_tags: string[];
+  sources: string[];
   featured: boolean;
   visible: boolean;
   searchable: boolean;
@@ -208,6 +235,57 @@ export interface AssetTransferCheckResponse {
   status_code: string;
   reason_code: string;
   reason: string;
+}
+
+export interface AssetDetailResponse {
+  asset: AssetResponse;
+  treasury: TreasuryAssetResponse | null;
+  compliance_rules: ComplianceAssetRulesResponse | null;
+  valuation: OracleValuationResponse | null;
+  holder: AssetHolderStateResponse | null;
+  unavailable_sections: string[];
+}
+
+export interface AssetHistoryCandleResponse {
+  timestamp: number;
+  value: string;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+}
+
+export interface AssetHistoryResponse {
+  asset_address: string;
+  range: string;
+  interval: string;
+  last_updated_at: number | null;
+  primary_market_price: AssetHistoryCandleResponse[];
+  underlying_market_price: AssetHistoryCandleResponse[];
+}
+
+export interface AssetAmountQuoteResponse {
+  market_currency_amount: string;
+  payment_token_amount: string;
+  payment_token_base_units: string;
+}
+
+export interface AssetPaymentTokenQuoteResponse {
+  market_currency: string;
+  payment_token_coin_id: string;
+  payment_token_address: string;
+  payment_token_symbol: string;
+  payment_token_decimals: number;
+  market_currency_per_payment_token: string;
+  usd_per_payment_token: string;
+  last_updated_at: number | null;
+  amount: AssetAmountQuoteResponse | null;
+  subscription_price: AssetAmountQuoteResponse | null;
+  redemption_price: AssetAmountQuoteResponse | null;
+}
+
+export interface AssetSupportedCurrenciesResponse {
+  supported_currencies: string[];
 }
 
 export interface AssetTypeListResponse {

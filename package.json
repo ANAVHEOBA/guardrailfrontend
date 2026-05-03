@@ -12,12 +12,14 @@
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "2.0.0-alpha.2",
+    "@solidjs/vite-plugin-nitro-2": "^0.1.0",
+    "@visx/curve": "^3.12.0",
+    "@visx/scale": "^3.12.0",
+    "@visx/shape": "^3.12.0",
     "solid-js": "^1.9.5",
-    "vite": "^7.0.0",
-    "@solidjs/vite-plugin-nitro-2": "^0.1.0"
+    "vite": "^7.0.0"
   },
   "engines": {
     "node": ">=22"
-  },
-  "devDependencies": {}
+  }
 }

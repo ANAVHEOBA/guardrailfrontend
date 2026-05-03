@@ -6,35 +6,24 @@ import {
   withBearerToken,
 } from "../api.ts";
 import type {
-  AdminBurnAssetRequest,
-  AdminControllerTransferRequest,
-  AdminCreateAssetRequest,
-  AdminIssueAssetRequest,
-  AdminProcessRedemptionRequest,
-  AdminRegisterAssetTypeRequest,
-  AdminSetAssetCatalogRequest,
-  AdminSetAssetComplianceRegistryRequest,
-  AdminSetAssetMetadataRequest,
-  AdminSetAssetPriceRequest,
-  AdminSetAssetPricingRequest,
-  AdminSetAssetSelfServicePurchaseRequest,
-  AdminSetAssetStateRequest,
-  AdminSetAssetTreasuryRequest,
-  AssetCatalogWriteResponse,
   AssetCheckTransferRequest,
   AssetClientOptions,
+  AssetDetailQuery,
+  AssetDetailResponse,
   AssetFactoryStatusResponse,
-  AssetFactoryWriteResponse,
+  AssetHistoryQuery,
+  AssetHistoryResponse,
   AssetHolderStateResponse,
   AssetListResponse,
+  AssetPaymentTokenQuoteResponse,
   AssetPreviewRequest,
   AssetPreviewResponse,
   AssetResponse,
+  AssetSupportedCurrenciesResponse,
   AssetTransferCheckResponse,
   AssetTypeListResponse,
   AssetTypeResponse,
-  AssetTypeWriteResponse,
-  AssetWriteResponse,
+  AssetQuoteQuery,
   GaslessApprovePaymentTokenRequest,
   GaslessAssetActionResponse,
   GaslessCancelRedemptionRequest,
@@ -45,13 +34,34 @@ import type {
 } from "./types.ts";
 
 export interface AssetClient {
+  fetchPaymentTokenQuote(query?: AssetQuoteQuery): Promise<AssetPaymentTokenQuoteResponse>;
+  fetchNgnPaymentTokenQuote(query?: AssetQuoteQuery): Promise<AssetPaymentTokenQuoteResponse>;
+  fetchSupportedCurrencies(): Promise<AssetSupportedCurrenciesResponse>;
   fetchFactoryStatus(): Promise<AssetFactoryStatusResponse>;
   listAssetTypes(): Promise<AssetTypeListResponse>;
   fetchAssetType(assetTypeId: string): Promise<AssetTypeResponse>;
   listAssets(query?: ListAssetsQuery): Promise<AssetListResponse>;
   listAssetsByType(assetTypeId: string): Promise<AssetListResponse>;
+  fetchAssetHistoryByProposal(
+    proposalId: string,
+    query?: AssetHistoryQuery,
+  ): Promise<AssetHistoryResponse>;
+  fetchAssetDetailByProposal(
+    proposalId: string,
+    query?: AssetDetailQuery,
+  ): Promise<AssetDetailResponse>;
   fetchAssetByProposal(proposalId: string): Promise<AssetResponse>;
+  fetchAssetHistoryBySlug(slug: string, query?: AssetHistoryQuery): Promise<AssetHistoryResponse>;
+  fetchAssetDetailBySlug(slug: string, query?: AssetDetailQuery): Promise<AssetDetailResponse>;
   fetchAssetBySlug(slug: string): Promise<AssetResponse>;
+  fetchAssetHistory(
+    assetAddress: string,
+    query?: AssetHistoryQuery,
+  ): Promise<AssetHistoryResponse>;
+  fetchAssetDetail(
+    assetAddress: string,
+    query?: AssetDetailQuery,
+  ): Promise<AssetDetailResponse>;
   fetchAsset(assetAddress: string): Promise<AssetResponse>;
   fetchAssetHolderState(
     assetAddress: string,
@@ -66,77 +76,6 @@ export interface AssetClient {
     assetAddress: string,
     request: AssetCheckTransferRequest,
   ): Promise<AssetTransferCheckResponse>;
-  registerAssetType(token: string, request: AdminRegisterAssetTypeRequest): Promise<AssetTypeWriteResponse>;
-  unregisterAssetType(token: string, assetTypeId: string): Promise<AssetTypeWriteResponse>;
-  pauseFactory(token: string): Promise<AssetFactoryWriteResponse>;
-  unpauseFactory(token: string): Promise<AssetFactoryWriteResponse>;
-  createAsset(token: string, request: AdminCreateAssetRequest): Promise<AssetWriteResponse>;
-  issueAsset(
-    token: string,
-    assetAddress: string,
-    request: AdminIssueAssetRequest,
-  ): Promise<AssetWriteResponse>;
-  burnAsset(
-    token: string,
-    assetAddress: string,
-    request: AdminBurnAssetRequest,
-  ): Promise<AssetWriteResponse>;
-  setAssetState(
-    token: string,
-    assetAddress: string,
-    request: AdminSetAssetStateRequest,
-  ): Promise<AssetWriteResponse>;
-  setSubscriptionPrice(
-    token: string,
-    assetAddress: string,
-    request: AdminSetAssetPriceRequest,
-  ): Promise<AssetWriteResponse>;
-  setRedemptionPrice(
-    token: string,
-    assetAddress: string,
-    request: AdminSetAssetPriceRequest,
-  ): Promise<AssetWriteResponse>;
-  setPricing(
-    token: string,
-    assetAddress: string,
-    request: AdminSetAssetPricingRequest,
-  ): Promise<AssetWriteResponse>;
-  setSelfServicePurchaseEnabled(
-    token: string,
-    assetAddress: string,
-    request: AdminSetAssetSelfServicePurchaseRequest,
-  ): Promise<AssetWriteResponse>;
-  setMetadataHash(
-    token: string,
-    assetAddress: string,
-    request: AdminSetAssetMetadataRequest,
-  ): Promise<AssetWriteResponse>;
-  setAssetCatalog(
-    token: string,
-    assetAddress: string,
-    request: AdminSetAssetCatalogRequest,
-  ): Promise<AssetCatalogWriteResponse>;
-  setComplianceRegistry(
-    token: string,
-    assetAddress: string,
-    request: AdminSetAssetComplianceRegistryRequest,
-  ): Promise<AssetWriteResponse>;
-  setTreasury(
-    token: string,
-    assetAddress: string,
-    request: AdminSetAssetTreasuryRequest,
-  ): Promise<AssetWriteResponse>;
-  disableController(token: string, assetAddress: string): Promise<AssetWriteResponse>;
-  controllerTransfer(
-    token: string,
-    assetAddress: string,
-    request: AdminControllerTransferRequest,
-  ): Promise<AssetWriteResponse>;
-  processRedemption(
-    token: string,
-    assetAddress: string,
-    request: AdminProcessRedemptionRequest,
-  ): Promise<AssetWriteResponse>;
   approvePaymentToken(
     token: string,
     assetAddress: string,
@@ -172,6 +111,27 @@ export function createAssetClient(options: AssetClientOptions = {}): AssetClient
   const baseUrl = normalizeApiBaseUrl(options.baseUrl);
 
   return {
+    fetchPaymentTokenQuote(query) {
+      return requestJson<AssetPaymentTokenQuoteResponse>(baseUrl, "/market/quotes/payment-token", {
+        query,
+      });
+    },
+
+    fetchNgnPaymentTokenQuote(query) {
+      return requestJson<AssetPaymentTokenQuoteResponse>(
+        baseUrl,
+        "/market/quotes/ngn-payment-token",
+        { query },
+      );
+    },
+
+    fetchSupportedCurrencies() {
+      return requestJson<AssetSupportedCurrenciesResponse>(
+        baseUrl,
+        "/market/supported-currencies",
+      );
+    },
+
     fetchFactoryStatus() {
       return requestJson<AssetFactoryStatusResponse>(baseUrl, "/assets/factory");
     },
@@ -200,6 +160,22 @@ export function createAssetClient(options: AssetClientOptions = {}): AssetClient
       );
     },
 
+    fetchAssetHistoryByProposal(proposalId, query) {
+      return requestJson<AssetHistoryResponse>(
+        baseUrl,
+        `/assets/proposals/${encodePathSegment(proposalId)}/history`,
+        { query },
+      );
+    },
+
+    fetchAssetDetailByProposal(proposalId, query) {
+      return requestJson<AssetDetailResponse>(
+        baseUrl,
+        `/assets/proposals/${encodePathSegment(proposalId)}/detail`,
+        { query },
+      );
+    },
+
     fetchAssetByProposal(proposalId) {
       return requestJson<AssetResponse>(
         baseUrl,
@@ -207,8 +183,36 @@ export function createAssetClient(options: AssetClientOptions = {}): AssetClient
       );
     },
 
+    fetchAssetHistoryBySlug(slug, query) {
+      return requestJson<AssetHistoryResponse>(
+        baseUrl,
+        `/assets/slug/${encodePathSegment(slug)}/history`,
+        { query },
+      );
+    },
+
+    fetchAssetDetailBySlug(slug, query) {
+      return requestJson<AssetDetailResponse>(
+        baseUrl,
+        `/assets/slug/${encodePathSegment(slug)}/detail`,
+        { query },
+      );
+    },
+
     fetchAssetBySlug(slug) {
       return requestJson<AssetResponse>(baseUrl, `/assets/slug/${encodePathSegment(slug)}`);
+    },
+
+    fetchAssetHistory(assetAddress, query) {
+      return requestJson<AssetHistoryResponse>(baseUrl, `${assetPath(assetAddress)}/history`, {
+        query,
+      });
+    },
+
+    fetchAssetDetail(assetAddress, query) {
+      return requestJson<AssetDetailResponse>(baseUrl, `${assetPath(assetAddress)}/detail`, {
+        query,
+      });
     },
 
     fetchAsset(assetAddress) {
@@ -250,202 +254,6 @@ export function createAssetClient(options: AssetClientOptions = {}): AssetClient
         `${assetPath(assetAddress)}/check/transfer`,
         {
           method: "POST",
-          json: request,
-        },
-      );
-    },
-
-    registerAssetType(token, request) {
-      return requestJson<AssetTypeWriteResponse>(baseUrl, "/admin/assets/types", {
-        method: "POST",
-        headers: withBearerToken(token),
-        json: request,
-      });
-    },
-
-    unregisterAssetType(token, assetTypeId) {
-      return requestJson<AssetTypeWriteResponse>(
-        baseUrl,
-        `/admin/assets/types/${encodePathSegment(assetTypeId)}`,
-        {
-          method: "DELETE",
-          headers: withBearerToken(token),
-        },
-      );
-    },
-
-    pauseFactory(token) {
-      return requestJson<AssetFactoryWriteResponse>(baseUrl, "/admin/assets/factory/pause", {
-        method: "POST",
-        headers: withBearerToken(token),
-      });
-    },
-
-    unpauseFactory(token) {
-      return requestJson<AssetFactoryWriteResponse>(baseUrl, "/admin/assets/factory/unpause", {
-        method: "POST",
-        headers: withBearerToken(token),
-      });
-    },
-
-    createAsset(token, request) {
-      return requestJson<AssetWriteResponse>(baseUrl, "/admin/assets", {
-        method: "POST",
-        headers: withBearerToken(token),
-        json: request,
-      });
-    },
-
-    issueAsset(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/issue`,
-        {
-          method: "POST",
-          headers: withBearerToken(token),
-          json: request,
-        },
-      );
-    },
-
-    burnAsset(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/burn`,
-        {
-          method: "POST",
-          headers: withBearerToken(token),
-          json: request,
-        },
-      );
-    },
-
-    setAssetState(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/state`,
-        {
-          method: "PUT",
-          headers: withBearerToken(token),
-          json: request,
-        },
-      );
-    },
-
-    setSubscriptionPrice(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/subscription-price`,
-        {
-          method: "PUT",
-          headers: withBearerToken(token),
-          json: request,
-        },
-      );
-    },
-
-    setRedemptionPrice(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/redemption-price`,
-        {
-          method: "PUT",
-          headers: withBearerToken(token),
-          json: request,
-        },
-      );
-    },
-
-    setPricing(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(baseUrl, `/admin${assetPath(assetAddress)}/pricing`, {
-        method: "PUT",
-        headers: withBearerToken(token),
-        json: request,
-      });
-    },
-
-    setSelfServicePurchaseEnabled(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/self-service-purchase`,
-        {
-          method: "PUT",
-          headers: withBearerToken(token),
-          json: request,
-        },
-      );
-    },
-
-    setMetadataHash(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(baseUrl, `/admin${assetPath(assetAddress)}/metadata`, {
-        method: "PUT",
-        headers: withBearerToken(token),
-        json: request,
-      });
-    },
-
-    setAssetCatalog(token, assetAddress, request) {
-      return requestJson<AssetCatalogWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/catalog`,
-        {
-          method: "PUT",
-          headers: withBearerToken(token),
-          json: request,
-        },
-      );
-    },
-
-    setComplianceRegistry(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/compliance-registry`,
-        {
-          method: "PUT",
-          headers: withBearerToken(token),
-          json: request,
-        },
-      );
-    },
-
-    setTreasury(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(baseUrl, `/admin${assetPath(assetAddress)}/treasury`, {
-        method: "PUT",
-        headers: withBearerToken(token),
-        json: request,
-      });
-    },
-
-    disableController(token, assetAddress) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/controller/disable`,
-        {
-          method: "POST",
-          headers: withBearerToken(token),
-        },
-      );
-    },
-
-    controllerTransfer(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/controller/transfer`,
-        {
-          method: "POST",
-          headers: withBearerToken(token),
-          json: request,
-        },
-      );
-    },
-
-    processRedemption(token, assetAddress, request) {
-      return requestJson<AssetWriteResponse>(
-        baseUrl,
-        `/admin${assetPath(assetAddress)}/redemptions/process`,
-        {
-          method: "POST",
-          headers: withBearerToken(token),
           json: request,
         },
       );
