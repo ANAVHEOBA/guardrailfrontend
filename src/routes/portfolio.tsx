@@ -52,7 +52,8 @@ function formatExecutedAt(value: string): string {
 }
 
 function buildMarketHref(eventSlug: string, marketSlug: string): string {
-  return `/event/${encodeURIComponent(eventSlug)}/${encodeURIComponent(marketSlug)}`;
+  void marketSlug;
+  return `/event/${encodeURIComponent(eventSlug)}`;
 }
 
 function openAuthModal() {
@@ -60,7 +61,7 @@ function openAuthModal() {
     return;
   }
 
-  window.dispatchEvent(new Event("sabi:open-auth-modal"));
+  window.dispatchEvent(new Event("guardrail:open-auth-modal"));
 }
 
 export default function PortfolioRoute() {

@@ -1,6 +1,7 @@
 import { A } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 
+import { primeAssetDetailBundle } from "~/components/asset-detail/data";
 import {
   formatProbabilityFromBps,
   formatUsdVolume,
@@ -135,6 +136,10 @@ function rememberPreferredMarket(eventSlug: string, marketSlug?: string) {
   }
 }
 
+function primeEventAssetDetail(eventSlug: string) {
+  void primeAssetDetailBundle("slug", eventSlug, "1D");
+}
+
 function EventArtwork(props: { card: GroupedMarketEvent; eager?: boolean }) {
   const title = props.card.event.title.trim();
   const fallbackLetter = title.charAt(0).toUpperCase() || "M";
@@ -217,6 +222,10 @@ function CompactMarketCard(props: { card: GroupedMarketEvent; eagerData?: boolea
       setSnapshotMarkets(response.markets.map(toHomeCardMarket).sort(compareMarkets));
     });
   };
+  const warmCardData = () => {
+    warmEventSnapshot();
+    primeEventAssetDetail(props.card.event.slug);
+  };
 
   createEffect(() => {
     setSnapshotMarkets(null);
@@ -261,10 +270,10 @@ function CompactMarketCard(props: { card: GroupedMarketEvent; eagerData?: boolea
       <article
         class="pm-compact-card"
         ref={cardRef}
-        onPointerEnter={warmEventSnapshot}
-        onPointerDown={warmEventSnapshot}
-        onFocusIn={warmEventSnapshot}
-        onTouchStart={warmEventSnapshot}
+        onPointerEnter={warmCardData}
+        onPointerDown={warmCardData}
+        onFocusIn={warmCardData}
+        onTouchStart={warmCardData}
       >
         <div class="pm-compact-card__header">
           <EventArtwork card={props.card} eager={props.eagerImage} />

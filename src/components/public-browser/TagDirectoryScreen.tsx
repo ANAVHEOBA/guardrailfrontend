@@ -1,6 +1,10 @@
 import { createMemo, createSignal, onMount, Show } from "solid-js";
 
-import { marketClient, type TagSummaryResponse } from "~/lib/market/index.ts";
+import {
+  buildMarketFeedHref,
+  marketClient,
+  type TagSummaryResponse,
+} from "~/lib/market/index.ts";
 import PublicPageLayout from "./PublicPageLayout.tsx";
 import PublicState from "./PublicState.tsx";
 import SummaryTileGrid from "./SummaryTileGrid.tsx";
@@ -23,10 +27,14 @@ export default function TagDirectoryScreen() {
       })
       .map(tag => ({
         id: tag.slug,
-        href: `/tags#${encodeURIComponent(tag.slug)}`,
-        kicker: `${tag.market_count} markets`,
+        href: buildMarketFeedHref({
+          kind: "tag",
+          label: tag.label,
+          tagSlug: tag.slug,
+        }),
+        kicker: `${tag.market_count} assets`,
         title: tag.label,
-        meta: `${tag.event_count} events`,
+        meta: `${tag.event_count} indexed`,
       })),
   );
 
@@ -53,7 +61,7 @@ export default function TagDirectoryScreen() {
       title="Tags"
       kicker="Public endpoint"
       heading="Tags"
-      summary="The public tag directory is useful for discovery and for linking out from category, event, and market detail pages."
+      summary="Browse asset tags and jump into matching asset feeds."
     >
       <Show
         when={status() === "ready"}

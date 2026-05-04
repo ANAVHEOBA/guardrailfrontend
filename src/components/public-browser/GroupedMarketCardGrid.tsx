@@ -1,6 +1,7 @@
 import { A } from "@solidjs/router";
 import { For, Show } from "solid-js";
 
+import { primeAssetDetailBundle } from "~/components/asset-detail/data";
 import {
   getMarketDisplayLabel,
   type GroupedMarketEvent,
@@ -26,6 +27,10 @@ function rememberPreferredMarket(eventSlug: string, marketSlug: string) {
   } catch {
     // Ignore storage failures and fall back to plain navigation.
   }
+}
+
+function primeEventAssetDetail(eventSlug: string) {
+  void primeAssetDetailBundle("slug", eventSlug, "1D");
 }
 
 function formatCategoryLabel(value: string): string {
@@ -104,9 +109,18 @@ function GroupedMarketCard(props: {
 }) {
   const visibleMarkets = () =>
     props.card.markets.slice(0, props.marketLimit ?? props.card.markets.length);
+  const warmCardData = () => {
+    primeEventAssetDetail(props.card.event.slug);
+  };
 
   return (
-    <article class="pm-market-card">
+    <article
+      class="pm-market-card"
+      onPointerEnter={warmCardData}
+      onPointerDown={warmCardData}
+      onFocusIn={warmCardData}
+      onTouchStart={warmCardData}
+    >
       <div class="pm-market-card__header">
         <EventArtwork card={props.card} />
 

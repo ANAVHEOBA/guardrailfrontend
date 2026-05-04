@@ -1,4 +1,5 @@
 import {
+  formatAssetTokenBaseUnits,
   formatPaymentTokenAmountFromBaseUnits,
   type AssetDetailResponse,
   type AssetResponse,
@@ -21,8 +22,8 @@ export default function AssetDetailSummaryGrid(props: AssetDetailSummaryGridProp
     <div class="pm-asset-market__summary-grid">
       <SummaryCard
         label="Total supply"
-        value={formatNumericString(props.asset.total_supply)}
-        meta={`Max supply ${formatNumericString(props.asset.max_supply)}`}
+        value={formatAssetTokenBaseUnits(props.asset.total_supply)}
+        meta={`Max supply ${formatAssetTokenBaseUnits(props.asset.max_supply)}`}
       />
       <SummaryCard
         label="Investor footprint"
@@ -44,7 +45,7 @@ export default function AssetDetailSummaryGrid(props: AssetDetailSummaryGridProp
         label={holder() ? "Your position" : "Latest NAV"}
         value={
           holder()
-            ? formatNumericString(holder()?.balance ?? null)
+            ? formatAssetTokenBaseUnits(holder()?.balance ?? null)
             : formatPaymentTokenAmountFromBaseUnits(
                 props.detail?.valuation?.nav_per_token ?? null,
                 props.paymentTokenMeta,
@@ -52,7 +53,7 @@ export default function AssetDetailSummaryGrid(props: AssetDetailSummaryGridProp
         }
         meta={
           holder()
-            ? `Pending redemption ${formatNumericString(holder()?.pending_redemption ?? null)}`
+            ? `Pending redemption ${formatAssetTokenBaseUnits(holder()?.pending_redemption ?? null)}`
             : `Updated ${formatDateTime(
                 props.detail?.valuation?.updated_at ?? props.asset.updated_at,
               )}`

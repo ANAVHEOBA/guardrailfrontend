@@ -27,9 +27,9 @@ export default function CategoryDirectoryScreen() {
       })
       .map(category => ({
         href: buildCategoryHref(category.slug),
-        kicker: `${category.market_count} markets`,
+        kicker: `${category.market_count} assets`,
         title: category.label,
-        meta: `${category.event_count} events · ${category.featured_event_count} featured · ${category.breaking_event_count} breaking`,
+        meta: `${category.featured_event_count} featured · ${category.breaking_event_count} breaking`,
       })),
   );
 
@@ -56,7 +56,7 @@ export default function CategoryDirectoryScreen() {
       title="Categories"
       kicker="Public endpoint"
       heading="Categories"
-      summary="Browse published market categories and jump into the category-specific market feeds."
+      summary="Browse asset categories and jump into the matching asset feeds."
     >
       <Show
         when={status() === "ready"}

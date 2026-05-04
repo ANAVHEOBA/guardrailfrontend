@@ -6,6 +6,7 @@ import {
   buildMarketFeedHref,
   createMarketClient,
   executePreparedMarketTransactions,
+  formatTagSlugLabel,
   getMarketDisplayLabel,
   groupMarketsByEvent,
   isMarketFeedTargetActive,
@@ -999,12 +1000,26 @@ test("buildMarketFeedHref produces the public filter routes used by navbar tabs"
   );
   assert.equal(
     buildMarketFeedHref({
+      kind: "tag",
+      label: "RWA",
+      tagSlug: "rwa",
+    }),
+    "/markets?feed=tag&tag=rwa&label=RWA",
+  );
+  assert.equal(
+    buildMarketFeedHref({
       kind: "search",
       label: "Weather",
       query: "Weather",
     }),
     "/search?q=Weather",
   );
+});
+
+test("formatTagSlugLabel matches backend-style tag labels for slug-only payloads", () => {
+  assert.equal(formatTagSlugLabel("btc"), "BTC");
+  assert.equal(formatTagSlugLabel("rwa"), "RWA");
+  assert.equal(formatTagSlugLabel("supply-chain"), "Supply Chain");
 });
 
 test("isMarketFeedTargetActive matches feature, category, and search tabs correctly", () => {

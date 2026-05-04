@@ -138,6 +138,20 @@ export function formatSlugLabel(slug: string): string {
     .join(" ");
 }
 
+export function formatTagSlugLabel(slug: string): string {
+  return slug
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(token => {
+      if (token.length <= 4) {
+        return token.toUpperCase();
+      }
+
+      return `${token.charAt(0).toUpperCase()}${token.slice(1).toLowerCase()}`;
+    })
+    .join(" ");
+}
+
 export function getMarketDisplayLabel(market: PublicMarketCardResponse): string {
   const label = market.label.trim();
   const question = market.question.trim();

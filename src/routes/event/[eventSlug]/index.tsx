@@ -1,9 +1,14 @@
-import { useParams } from "@solidjs/router";
+import { useParams, type RouteDefinition } from "@solidjs/router";
 
-import { MarketDetailScreen } from "~/components/market-detail/index.ts";
+import AssetDetailScreen from "~/components/asset-detail/AssetDetailScreen";
+import { primeAssetDetailBundle } from "~/components/asset-detail/data";
+
+export const route = {
+  preload: ({ params }) => primeAssetDetailBundle("slug", params.eventSlug, "1D"),
+} satisfies RouteDefinition;
 
 export default function EventDetailRoute() {
   const params = useParams<{ eventSlug: string }>();
 
-  return <MarketDetailScreen eventSlug={params.eventSlug} />;
+  return <AssetDetailScreen mode="slug" identifier={() => params.eventSlug} />;
 }

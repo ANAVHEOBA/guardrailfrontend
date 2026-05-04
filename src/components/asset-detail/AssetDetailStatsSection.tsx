@@ -1,4 +1,5 @@
 import {
+  formatAssetTokenBaseUnits,
   formatPaymentTokenAmountFromBaseUnits,
   type AssetDetailResponse,
   type AssetResponse,
@@ -63,11 +64,11 @@ export default function AssetDetailStatsSection(props: AssetDetailStatsSectionPr
           rows={[
             {
               label: "Total supply",
-              value: formatNumericString(props.asset.total_supply),
+              value: formatAssetTokenBaseUnits(props.asset.total_supply),
             },
             {
               label: "Max supply",
-              value: formatNumericString(props.asset.max_supply),
+              value: formatAssetTokenBaseUnits(props.asset.max_supply),
             },
             {
               label: "Holders",
@@ -125,15 +126,15 @@ export default function AssetDetailStatsSection(props: AssetDetailStatsSectionPr
               ? [
                   {
                     label: "Asset balance",
-                    value: formatNumericString(holder()?.balance ?? null),
+                    value: formatAssetTokenBaseUnits(holder()?.balance ?? null),
                   },
                   {
                     label: "Unlocked balance",
-                    value: formatNumericString(holder()?.unlocked_balance ?? null),
+                    value: formatAssetTokenBaseUnits(holder()?.unlocked_balance ?? null),
                   },
                   {
                     label: "Pending redemption",
-                    value: formatNumericString(holder()?.pending_redemption ?? null),
+                    value: formatAssetTokenBaseUnits(holder()?.pending_redemption ?? null),
                   },
                   {
                     label: "Wallet cash",

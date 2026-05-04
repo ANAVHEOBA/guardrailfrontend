@@ -1,7 +1,11 @@
 import { A } from "@solidjs/router";
 import { For, Show } from "solid-js";
 
-import { formatSlugLabel } from "~/lib/market/view.ts";
+import {
+  buildMarketFeedHref,
+  formatSlugLabel,
+  formatTagSlugLabel,
+} from "~/lib/market/index.ts";
 
 interface MarketResourceLinksProps {
   eventId: string | null;
@@ -51,8 +55,15 @@ export default function MarketResourceLinks(props: MarketResourceLinksProps) {
         <div class="pm-browser__pill-row">
           <For each={props.tagSlugs}>
             {slug => (
-              <A class="pm-browser__pill" href={`/tags#${encodeURIComponent(slug)}`}>
-                {formatSlugLabel(slug)}
+              <A
+                class="pm-browser__pill"
+                href={buildMarketFeedHref({
+                  kind: "tag",
+                  label: formatTagSlugLabel(slug),
+                  tagSlug: slug,
+                })}
+              >
+                {formatTagSlugLabel(slug)}
               </A>
             )}
           </For>

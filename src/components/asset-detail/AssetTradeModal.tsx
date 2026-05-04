@@ -3,7 +3,9 @@ import { Portal } from "solid-js/web";
 
 import {
   assetClient,
+  formatAssetTokenBaseUnits,
   formatPaymentTokenAmountFromBaseUnits,
+  parseAssetTokenAmountInput,
   type AssetDetailResponse,
   type AssetHolderStateResponse,
   type AssetPreviewResponse,
@@ -55,14 +57,11 @@ function CloseIcon() {
 }
 
 function normalizeTradeAmount(value: string): string | null {
-  const normalized = value.replaceAll(",", "").trim();
-
-  if (!/^\d+(\.\d+)?$/.test(normalized)) {
+  try {
+    return parseAssetTokenAmountInput(value).baseUnits;
+  } catch {
     return null;
   }
-
-  const numeric = Number(normalized);
-  return Number.isFinite(numeric) && numeric > 0 ? normalized : null;
 }
 
 function formatEstimatedDisplay(value: number, symbol: string): string {
@@ -101,14 +100,24 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
   let holderRequestId = 0;
 
   const normalizedAmount = createMemo(() => normalizeTradeAmount(amountInput()));
+  const displayAmount = createMemo(() => {
+    try {
+      return parseAssetTokenAmountInput(amountInput()).displayAmount;
+    } catch {
+      return null;
+    }
+  });
   const canBuy = createMemo(
     () =>
       props.asset.self_service_purchase_enabled &&
       (props.detail?.compliance_rules?.subscriptions_enabled ?? true),
   );
   const canSell = createMemo(() => props.detail?.compliance_rules?.redemptions_enabled ?? true);
+  const hasSmartAccountSession = createMemo(
+    () => authSession()?.user.wallet?.account_kind === "smart_account",
+  );
   const projectedSettlementLabel = createMemo(() => {
-    const amount = normalizedAmount();
+    const amount = displayAmount();
     const priceRaw =
       props.mode === "buy" ? props.asset.price_per_token : props.asset.redemption_price_per_token;
     const decimals = props.paymentTokenMeta.decimals;
@@ -129,6 +138,39 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
     }
 
     return projectedSettlementLabel();
+  });
+  const approvalRequired = createMemo(
+    () =>
+      props.mode === "buy" &&
+      Boolean(preview()) &&
+      allowanceNeedsApproval(holder(), preview()!.value),
+  );
+  const walletCashLabel = createMemo(() =>
+    holder()
+      ? formatPaymentTokenAmountFromBaseUnits(holder()?.payment_token_balance ?? null, props.paymentTokenMeta)
+      : authSession()?.token
+        ? "Unavailable"
+        : "Sign in to view",
+  );
+  const assetBalanceLabel = createMemo(() =>
+    holder() ? formatAssetTokenBaseUnits(holder()?.balance ?? null) : "Sign in to view",
+  );
+  const secondaryAssetMetricLabel = createMemo(() =>
+    props.mode === "buy" ? "Allowance" : "Unlocked balance",
+  );
+  const secondaryAssetMetricValue = createMemo(() => {
+    if (!holder()) {
+      return authSession()?.token ? "Unavailable" : "Sign in to view";
+    }
+
+    if (props.mode === "buy") {
+      return formatPaymentTokenAmountFromBaseUnits(
+        holder()?.payment_token_allowance_to_treasury ?? null,
+        props.paymentTokenMeta,
+      );
+    }
+
+    return formatAssetTokenBaseUnits(holder()?.unlocked_balance ?? null);
   });
 
   createEffect(() => {
@@ -173,6 +215,17 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
   createEffect(() => {
     props.detail?.holder;
     setHolder(props.detail?.holder ?? null);
+  });
+
+  createEffect(() => {
+    if (!props.open) {
+      return;
+    }
+
+    props.mode;
+    setStatusMessage(null);
+    setErrorMessage(null);
+    setResult(null);
   });
 
   createEffect(() => {
@@ -307,6 +360,14 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
       return;
     }
 
+    if (!hasSmartAccountSession()) {
+      setErrorMessage(
+        "Asset trading requires a linked smart-account wallet for the gasless execution flow.",
+      );
+      setStatusMessage(null);
+      return;
+    }
+
     setIsSubmitting(true);
     setStatusMessage(props.mode === "buy" ? "Preparing buy..." : "Preparing sell...");
     setErrorMessage(null);
@@ -418,7 +479,7 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
 
                 <form class="pm-asset-trade-modal__form" onSubmit={handleSubmit}>
                   <label class="pm-asset-trade-modal__field">
-                    <span class="pm-asset-trade-modal__label">Token amount</span>
+                    <span class="pm-asset-trade-modal__label">Asset amount</span>
                     <input
                       type="text"
                       inputmode="decimal"
@@ -440,32 +501,47 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
                     <div class="pm-asset-trade-modal__metric">
                       <span class="pm-asset-trade-modal__metric-label">Wallet cash</span>
                       <strong class="pm-asset-trade-modal__metric-value">
-                        {formatPaymentTokenAmountFromBaseUnits(
-                          holder()?.payment_token_balance ?? null,
-                          props.paymentTokenMeta,
-                        )}
+                        {walletCashLabel()}
                       </strong>
                     </div>
                     <div class="pm-asset-trade-modal__metric">
                       <span class="pm-asset-trade-modal__metric-label">Asset balance</span>
                       <strong class="pm-asset-trade-modal__metric-value">
-                        {holder()?.balance ?? "Sign in to view"}
+                        {assetBalanceLabel()}
                       </strong>
                     </div>
                     <div class="pm-asset-trade-modal__metric">
-                      <span class="pm-asset-trade-modal__metric-label">Allowance</span>
+                      <span class="pm-asset-trade-modal__metric-label">
+                        {secondaryAssetMetricLabel()}
+                      </span>
                       <strong class="pm-asset-trade-modal__metric-value">
-                        {formatPaymentTokenAmountFromBaseUnits(
-                          holder()?.payment_token_allowance_to_treasury ?? null,
-                          props.paymentTokenMeta,
-                        )}
+                        {secondaryAssetMetricValue()}
                       </strong>
                     </div>
                   </div>
 
+                  <Show when={previewStatus() === "loading"}>
+                    <p class="pm-asset-trade-modal__feedback">Refreshing settlement preview...</p>
+                  </Show>
+
                   <Show when={previewStatus() === "error" && previewError()}>
                     <p class="pm-asset-trade-modal__feedback pm-asset-trade-modal__feedback--error">
                       {previewError()}
+                    </p>
+                  </Show>
+
+                  <Show when={approvalRequired()}>
+                    <p class="pm-asset-trade-modal__feedback">
+                      This buy will first approve the treasury to pull{" "}
+                      {previewLabel() ?? "the previewed settlement amount"}, then submit the asset
+                      purchase.
+                    </p>
+                  </Show>
+
+                  <Show when={authSession()?.token && !hasSmartAccountSession()}>
+                    <p class="pm-asset-trade-modal__feedback pm-asset-trade-modal__feedback--error">
+                      This asset flow uses the backend gasless smart-account path. Reconnect with
+                      your linked smart-account wallet before submitting a trade.
                     </p>
                   </Show>
 

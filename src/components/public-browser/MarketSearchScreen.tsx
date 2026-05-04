@@ -1,17 +1,16 @@
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
 
+import PublicAssetSections from "~/components/PublicAssetSections";
 import {
-  groupMarketsByEvent,
-  marketClient,
-  type MarketListResponse,
-} from "~/lib/market/index.ts";
-import FactGrid from "./FactGrid.tsx";
-import GroupedMarketCardGrid from "./GroupedMarketCardGrid.tsx";
+  filterAssetsForFeed,
+  loadCompleteAssetFeed,
+  readStoredAssetFeed,
+} from "~/lib/asset-feed.ts";
+import type { AssetResponse } from "~/lib/asset/types.ts";
 import PublicPageLayout from "./PublicPageLayout.tsx";
 import PublicState from "./PublicState.tsx";
 
 type ScreenStatus = "idle" | "loading" | "ready" | "error";
-const SEARCH_PAGE_LIMIT = 24;
 const MIN_SEARCH_LENGTH = 2;
 
 interface MarketSearchScreenProps {
@@ -25,14 +24,30 @@ function normalizeSearchQuery(value?: string): string {
 export default function MarketSearchScreen(props: MarketSearchScreenProps) {
   const [status, setStatus] = createSignal<ScreenStatus>("idle");
   const [error, setError] = createSignal<string | null>(null);
-  const [data, setData] = createSignal<MarketListResponse | null>(null);
+  const [assets, setAssets] = createSignal<AssetResponse[]>([]);
   let requestVersion = 0;
 
   const query = createMemo(() => normalizeSearchQuery(props.query));
-  const groupedMarkets = createMemo(() => groupMarketsByEvent(data()?.markets ?? []));
-  const eventCount = createMemo(() => groupedMarkets().length);
   const hasQuery = createMemo(() => query().length > 0);
   const hasValidQuery = createMemo(() => query().length >= MIN_SEARCH_LENGTH);
+
+  const seedFromCachedAssetFeed = (currentQuery: string): boolean => {
+    const cachedFeed = readStoredAssetFeed();
+
+    if (!cachedFeed) {
+      return false;
+    }
+
+    setAssets(
+      filterAssetsForFeed(cachedFeed.assets, {
+        kind: "search",
+        query: currentQuery,
+      }),
+    );
+    setStatus("ready");
+    setError(null);
+    return true;
+  };
 
   const loadSearch = async () => {
     const currentQuery = query();
@@ -40,33 +55,58 @@ export default function MarketSearchScreen(props: MarketSearchScreenProps) {
     if (currentQuery.length === 0 || currentQuery.length < MIN_SEARCH_LENGTH) {
       setStatus("idle");
       setError(null);
-      setData(null);
+      setAssets([]);
       return;
     }
 
     const version = ++requestVersion;
-    setStatus("loading");
+    const seededFromCache = seedFromCachedAssetFeed(currentQuery);
+
+    if (!seededFromCache) {
+      setStatus("loading");
+      setAssets([]);
+    }
+
     setError(null);
 
     try {
-      const response = await marketClient.searchMarkets({
-        q: currentQuery,
-        limit: SEARCH_PAGE_LIMIT,
+      const response = await loadCompleteAssetFeed(feed => {
+        if (version !== requestVersion) {
+          return;
+        }
+
+        setAssets(
+          filterAssetsForFeed(feed.assets, {
+            kind: "search",
+            query: currentQuery,
+          }),
+        );
+        setStatus("ready");
       });
 
       if (version !== requestVersion) {
         return;
       }
 
-      setData(response);
+      setAssets(
+        filterAssetsForFeed(response.assets, {
+          kind: "search",
+          query: currentQuery,
+        }),
+      );
       setStatus("ready");
     } catch (caughtError) {
       if (version !== requestVersion) {
         return;
       }
 
-      setData(null);
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to search markets.");
+      if (seededFromCache) {
+        setError(caughtError instanceof Error ? caughtError.message : "Unable to refresh assets.");
+        return;
+      }
+
+      setAssets([]);
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to search assets.");
       setStatus("error");
     }
   };
@@ -80,87 +120,53 @@ export default function MarketSearchScreen(props: MarketSearchScreenProps) {
     <PublicPageLayout
       title={hasQuery() ? `Search: ${query()}` : "Search"}
       kicker="Public search"
-      heading={hasQuery() ? `Search results for "${query()}"` : "Search Sabimarket"}
+      heading={hasQuery() ? `Search results for "${query()}"` : "Search assets"}
       summary={
         hasQuery()
-          ? "Browse published markets and events that match your search."
-          : "Search by market question, event title, category, or topic."
+          ? "Browse assets using the same cached feed and card layout as the home page."
+          : "Search by asset name, symbol, slug, summary, category, or tag."
       }
     >
       <Show
-        when={status() === "ready" && data()}
+        when={status() !== "error"}
         fallback={
           <PublicState
-            title={
-              !hasQuery()
-                ? "Search markets"
-                : !hasValidQuery()
-                  ? "Keep typing"
-                  : status() === "loading"
-                    ? "Searching markets"
-                    : "Unable to search markets"
-            }
-            copy={
-              !hasQuery()
-                ? "Enter at least 2 characters in the search bar above to find published markets."
-                : !hasValidQuery()
-                  ? "Search terms must be at least 2 characters long."
-                  : status() === "loading"
-                    ? `Looking for markets matching "${query()}".`
-                    : error() ?? "Please try again."
-            }
-            actionLabel={status() === "error" ? "Retry" : undefined}
-            onAction={
-              status() === "error"
-                ? () => {
-                    void loadSearch();
-                  }
-                : undefined
-            }
+            title="Unable to search assets"
+            copy={error() ?? "Please try again."}
+            actionLabel="Retry"
+            onAction={() => {
+              void loadSearch();
+            }}
           />
         }
       >
-        <FactGrid
-          facts={[
-            {
-              label: "Query",
-              value: query(),
-            },
-            {
-              label: "Markets",
-              value: String(data()?.markets.length ?? 0),
-            },
-            {
-              label: "Events",
-              value: String(eventCount()),
-            },
-            {
-              label: "Limit",
-              value: String(data()?.limit ?? SEARCH_PAGE_LIMIT),
-            },
-          ]}
-        />
-
-        <section class="pm-home__section">
-          <div class="pm-home__section-head">
-            <div>
-              <p class="pm-home__section-kicker">Published markets</p>
-              <h2 class="pm-home__section-title">Search matches</h2>
-            </div>
-          </div>
-
-          <Show
-            when={groupedMarkets().length > 0}
-            fallback={
-              <PublicState
-                title="No markets found"
-                copy={`No published markets matched "${query()}".`}
-              />
-            }
-          >
-            <GroupedMarketCardGrid cards={groupedMarkets()} marketLimit={6} />
-          </Show>
-        </section>
+        <Show
+          when={status() === "ready" && assets().length > 0}
+          fallback={
+            <PublicState
+              title={
+                !hasQuery()
+                  ? "Search assets"
+                  : !hasValidQuery()
+                    ? "Keep typing"
+                    : status() === "loading"
+                      ? "Searching assets"
+                      : "No assets found"
+              }
+              copy={
+                !hasQuery()
+                  ? "Enter at least 2 characters in the search bar above to find assets."
+                  : !hasValidQuery()
+                    ? "Search terms must be at least 2 characters long."
+                    : status() === "loading"
+                      ? `Looking for assets matching "${query()}".`
+                      : `No assets matched "${query()}".`
+              }
+            />
+          }
+        >
+          <PublicAssetSections assets={assets()} title="Search matches" />
+        </Show>
       </Show>
     </PublicPageLayout>
   );

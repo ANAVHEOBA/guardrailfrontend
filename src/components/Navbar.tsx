@@ -9,6 +9,7 @@ import {
   onMount,
 } from "solid-js";
 
+import { primeAssetDetailBundle } from "./asset-detail/data";
 import { authClient } from "../lib/auth/auth.ts";
 import {
   clearStoredAuthSession,
@@ -41,6 +42,8 @@ const EVENT_PRIMARY_MARKET_STORAGE_PREFIX = "pm-event-primary-market/v1:";
 const SEARCH_RESULT_LIMIT = 6;
 const SEARCH_DEBOUNCE_MS = 200;
 const MIN_SEARCH_LENGTH = 2;
+const MIN_BACKEND_TOPIC_TAB_COUNT = 4;
+const MAX_BACKEND_CATEGORY_TABS = 10;
 
 interface BrowseTabMetadata {
   categories: CategorySummaryResponse[];
@@ -348,6 +351,102 @@ function rememberPreferredMarket(eventSlug: string, marketSlug: string) {
   }
 }
 
+function primeEventAssetDetail(eventSlug: string) {
+  void primeAssetDetailBundle("slug", eventSlug, "1D");
+}
+
+function normalizeTopicKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildBackendDrivenTopicTabs(
+  categories: readonly CategorySummaryResponse[],
+  tags: readonly TagSummaryResponse[],
+): MarketFeedTarget[] {
+  const seenKeys = new Set<string>();
+  const topicTabs: MarketFeedTarget[] = [];
+
+  const sortedCategories = [...categories]
+    .filter(category => category.market_count > 0)
+    .sort((left, right) => {
+      if (left.featured_event_count !== right.featured_event_count) {
+        return right.featured_event_count - left.featured_event_count;
+      }
+
+      if (left.breaking_event_count !== right.breaking_event_count) {
+        return right.breaking_event_count - left.breaking_event_count;
+      }
+
+      if (left.market_count !== right.market_count) {
+        return right.market_count - left.market_count;
+      }
+
+      return left.label.localeCompare(right.label);
+    });
+
+  for (const category of sortedCategories) {
+    const key = normalizeTopicKey(category.slug || category.label);
+
+    if (!key || seenKeys.has(key)) {
+      continue;
+    }
+
+    seenKeys.add(key);
+    topicTabs.push({
+      kind: "category",
+      label: category.label,
+      categorySlug: category.slug,
+    });
+
+    if (topicTabs.length >= MAX_BACKEND_CATEGORY_TABS) {
+      break;
+    }
+  }
+
+  if (topicTabs.length >= MIN_BACKEND_TOPIC_TAB_COUNT) {
+    return topicTabs;
+  }
+
+  const sortedTags = [...tags]
+    .filter(tag => tag.market_count > 0)
+    .sort((left, right) => {
+      if (left.market_count !== right.market_count) {
+        return right.market_count - left.market_count;
+      }
+
+      if (left.event_count !== right.event_count) {
+        return right.event_count - left.event_count;
+      }
+
+      return left.label.localeCompare(right.label);
+    });
+
+  for (const tag of sortedTags) {
+    const key = normalizeTopicKey(tag.slug || tag.label);
+
+    if (!key || seenKeys.has(key)) {
+      continue;
+    }
+
+    seenKeys.add(key);
+    topicTabs.push({
+      kind: "tag",
+      label: tag.label,
+      tagSlug: tag.slug,
+    });
+
+    if (topicTabs.length >= MAX_BACKEND_CATEGORY_TABS) {
+      break;
+    }
+  }
+
+  return topicTabs;
+}
+
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -382,7 +481,7 @@ export default function Navbar() {
   const isSearchDropdownOpen = () =>
     isSearchFocused() && normalizedSearchQuery().length >= MIN_SEARCH_LENGTH;
   const featuredTabs = createMemo(() => MARKET_FEATURED_TAB_TARGETS);
-  const topicTabs = createMemo(() =>
+  const fallbackTopicTabs = createMemo(() =>
     MARKET_TOPIC_TAB_DEFINITIONS.map(definition => ({
       label: definition.label,
       target: resolveMarketTopicTabTarget(
@@ -392,6 +491,21 @@ export default function Navbar() {
       ),
     })),
   );
+  const topicTabs = createMemo(() => {
+    const backendTabs = buildBackendDrivenTopicTabs(
+      browseTabMetadata().categories,
+      browseTabMetadata().tags,
+    );
+
+    if (backendTabs.length >= MIN_BACKEND_TOPIC_TAB_COUNT) {
+      return backendTabs.map(target => ({
+        label: target.label,
+        target,
+      }));
+    }
+
+    return fallbackTopicTabs();
+  });
   const isTabActive = (target: MarketFeedTarget) =>
     isMarketFeedTargetActive(target, location.pathname, location.search);
 
@@ -698,6 +812,7 @@ export default function Navbar() {
 
   const navigateToSearchResult = (market: PublicMarketCardResponse) => {
     rememberPreferredMarket(market.event.slug, market.slug);
+    primeEventAssetDetail(market.event.slug);
     setSearchFocused(false);
     setActiveSearchIndex(-1);
     navigate(buildSearchHref(market.event.slug));
@@ -854,7 +969,11 @@ export default function Navbar() {
                                       index() === activeSearchIndex(),
                                   }}
                                   aria-selected={index() === activeSearchIndex()}
-                                  onMouseEnter={() => setActiveSearchIndex(index())}
+                                  onMouseEnter={() => {
+                                    setActiveSearchIndex(index());
+                                    primeEventAssetDetail(market.event.slug);
+                                  }}
+                                  onFocus={() => primeEventAssetDetail(market.event.slug)}
                                   onClick={() => navigateToSearchResult(market)}
                                 >
                                   <span class="pm-search-field__result-topline">
@@ -1035,11 +1154,11 @@ export default function Navbar() {
                       href={buildMarketFeedHref(target)}
                       aria-current={isTabActive(target) ? "page" : undefined}
                     >
-                      {target.label === "Trending" && (
+                      <Show when={target.label === "Trending"}>
                         <span class="pm-tab__icon">
                           <TrendingIcon />
                         </span>
-                      )}
+                      </Show>
                       <span>{target.label}</span>
                     </A>
                   )}
@@ -1088,6 +1207,7 @@ export default function Navbar() {
               <div class="pm-tabs-fade pm-tabs-fade--right" aria-hidden="true" />
             </div>
           </div>
+
         </nav>
       </header>
 

@@ -12,6 +12,7 @@ export {
   writeStoredEventMarkets,
 } from "./event-markets-cache.ts";
 export {
+  formatTagSlugLabel,
   formatSlugLabel,
   getMarketDisplayLabel,
   groupEventCardsWithMarkets,

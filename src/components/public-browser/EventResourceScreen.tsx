@@ -1,7 +1,13 @@
 import { A } from "@solidjs/router";
 import { For, Show, createMemo, createSignal, onMount } from "solid-js";
 
-import { marketClient, formatSlugLabel, type EventDetailResponse } from "~/lib/market/index.ts";
+import {
+  buildMarketFeedHref,
+  formatSlugLabel,
+  formatTagSlugLabel,
+  marketClient,
+  type EventDetailResponse,
+} from "~/lib/market/index.ts";
 import { formatLongDate } from "~/components/market-detail/format.ts";
 import FactGrid from "./FactGrid.tsx";
 import KeyValueList from "./KeyValueList.tsx";
@@ -192,8 +198,15 @@ export default function EventResourceScreen(props: EventResourceScreenProps) {
               <div class="pm-browser__pill-row">
                 <For each={data()?.event.tag_slugs ?? []}>
                   {slug => (
-                    <A class="pm-browser__pill" href={`/tags#${encodeURIComponent(slug)}`}>
-                      {formatSlugLabel(slug)}
+                    <A
+                      class="pm-browser__pill"
+                      href={buildMarketFeedHref({
+                        kind: "tag",
+                        label: formatTagSlugLabel(slug),
+                        tagSlug: slug,
+                      })}
+                    >
+                      {formatTagSlugLabel(slug)}
                     </A>
                   )}
                 </For>
