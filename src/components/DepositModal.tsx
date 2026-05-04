@@ -209,8 +209,7 @@ export default function DepositModal(props: DepositModalProps) {
 
     try {
       const response = await faucetClient.requestUsdc({
-        address: recipientAddress(),
-        amount: parsedAmount.baseUnits,
+        amount: parsedAmount.displayAmount,
       });
       const displayAmount = formatUsdcBaseUnits(response.amount);
       const creditedUsd = Number(displayAmount);
@@ -301,8 +300,8 @@ export default function DepositModal(props: DepositModalProps) {
                         Amount
                       </label>
                       <div class="pm-deposit-transfer__hint">
-                        Enter how much USDC you want. The request is sent directly to
-                        your Monad wallet.
+                        Enter how much USDC you want. The backend converts this
+                        display amount into token base units before minting.
                       </div>
                     </div>
                   </div>

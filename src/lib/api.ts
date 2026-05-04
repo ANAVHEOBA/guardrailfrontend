@@ -30,6 +30,12 @@ export function getErrorMessage(error: unknown, fallback = "Request failed"): st
 }
 
 export function readApiBaseUrlFromEnv(): string | undefined {
+  const devProxyTarget = import.meta.env?.VITE_DEV_API_PROXY_TARGET?.trim();
+
+  if (import.meta.env?.DEV && typeof window !== "undefined" && devProxyTarget) {
+    return "/api";
+  }
+
   return import.meta.env?.VITE_API_BASE_URL;
 }
 

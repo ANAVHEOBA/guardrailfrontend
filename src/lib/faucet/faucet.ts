@@ -1,4 +1,9 @@
-import { normalizeApiBaseUrl, requestJson, withBearerToken } from "../api.ts";
+import {
+  normalizeApiBaseUrl,
+  readApiBaseUrlFromEnv,
+  requestJson,
+  withBearerToken,
+} from "../api.ts";
 import { readStoredAuthSession } from "../auth/session.ts";
 import type {
   FaucetClientOptions,
@@ -8,16 +13,12 @@ import type {
   FaucetUsdcResponse,
 } from "./types.ts";
 
-function readViteEnv(key: "VITE_API_BASE_URL"): string | undefined {
-  return import.meta.env?.[key];
-}
-
 export interface FaucetClient {
-  requestUsdc(request: FaucetUsdcRequest): Promise<FaucetUsdcResponse>;
+  requestUsdc(request?: FaucetUsdcRequest): Promise<FaucetUsdcResponse>;
   fetchUsdcBalance(address: string): Promise<FaucetUsdcBalanceResponse>;
 }
 
-function resolveFaucetAuthToken(request: FaucetUsdcRequest): string {
+function resolveFaucetAuthToken(request?: FaucetUsdcRequest): string {
   if (typeof request === "string") {
     return request.trim();
   }
@@ -35,6 +36,9 @@ export function createFaucetClient(options: FaucetClientOptions = {}): FaucetCli
   return {
     requestUsdc(request) {
       const token = resolveFaucetAuthToken(request);
+      const amount =
+        typeof request === "object" && request !== null ? request.amount?.trim() : undefined;
+      const payload = amount ? { amount } : undefined;
 
       if (token.length === 0) {
         throw new Error("An authenticated session is required to request faucet USDC.");
@@ -49,6 +53,7 @@ export function createFaucetClient(options: FaucetClientOptions = {}): FaucetCli
       return requestJson<FaucetUsdcResponse>(baseUrl, "/faucet/usdc", {
         method: "POST",
         headers: withBearerToken(token),
+        json: payload,
       });
     },
 
@@ -63,7 +68,7 @@ export function createFaucetClient(options: FaucetClientOptions = {}): FaucetCli
 }
 
 export const faucetClient = createFaucetClient({
-  baseUrl: readViteEnv("VITE_API_BASE_URL"),
+  baseUrl: readApiBaseUrlFromEnv(),
 });
 
 export { ApiError } from "../api.ts";

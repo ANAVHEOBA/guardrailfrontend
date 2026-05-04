@@ -3,8 +3,8 @@ export interface FaucetClientOptions {
 }
 
 export interface FaucetUsdcLegacyRequest {
-  address: string;
-  amount: string;
+  address?: string;
+  amount?: string;
 }
 
 export type FaucetUsdcRequest = string | FaucetUsdcLegacyRequest;

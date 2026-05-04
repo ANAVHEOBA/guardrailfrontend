@@ -28,7 +28,8 @@ export function formatUnixTimestamp(value: number | null | undefined): string {
     return "Not available";
   }
 
-  return formatDateTime(new Date(value * 1000).toISOString());
+  const timestamp = value > 100_000_000_000 ? value : value * 1000;
+  return formatDateTime(new Date(timestamp).toISOString());
 }
 
 export function formatBooleanValue(value: boolean): string {

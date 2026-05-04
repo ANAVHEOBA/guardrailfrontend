@@ -71,9 +71,20 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
   const initialPaymentTokenQuote = canUseProjectedInitialView
     ? readCachedPaymentTokenQuote(props.mode, initialIdentifier)
     : null;
+  const hasResolvedDetail = (value: typeof initialProjectedDetail) =>
+    Boolean(
+      value &&
+        (
+          value.treasury ||
+          value.compliance_rules ||
+          value.valuation ||
+          value.holder ||
+          value.unavailable_sections.length > 0
+        ),
+    );
 
   const [status, setStatus] = createSignal<DetailLoadStatus>(
-    initialProjectedDetail ? "ready" : "loading",
+    hasResolvedDetail(initialProjectedDetail) ? "ready" : "loading",
   );
   const [error, setError] = createSignal<string | null>(null);
   const [detail, setDetail] = createSignal(initialProjectedDetail);
@@ -233,7 +244,7 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
     const projectedHistory = readCachedAssetHistory(props.mode, identifier, "1D");
     const projectedPaymentTokenQuote = readCachedPaymentTokenQuote(props.mode, identifier);
 
-    setStatus(projectedDetail ? "ready" : "loading");
+    setStatus(hasResolvedDetail(projectedDetail) ? "ready" : "loading");
     setError(null);
     setDetail(projectedDetail);
     setShowFullSummary(false);
