@@ -54,7 +54,7 @@ function FilterDropdown(props: { label: string; options: string[] }) {
 
   return (
     <div class="pm-filter-dropdown" ref={ref}>
-      <button
+      {/* <button
         type="button"
         class={`pm-filter-trigger${open() ? " pm-filter-trigger--open" : ""}`}
         onClick={toggle}
@@ -65,7 +65,7 @@ function FilterDropdown(props: { label: string; options: string[] }) {
         <span class="pm-filter-trigger__chevron" aria-hidden="true">
           <ChevronDownIcon />
         </span>
-      </button>
+      </button> */}
 
       <Show when={open()}>
         <div class="pm-filter-menu" role="listbox">
