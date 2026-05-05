@@ -145,32 +145,75 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
       Boolean(preview()) &&
       allowanceNeedsApproval(holder(), preview()!.value),
   );
-  const walletCashLabel = createMemo(() =>
-    holder()
-      ? formatPaymentTokenAmountFromBaseUnits(holder()?.payment_token_balance ?? null, props.paymentTokenMeta)
+  const walletCashLabel = createMemo(() => {
+    const currentHolder = holder();
+    const balance = currentHolder?.payment_token_balance;
+    const label = currentHolder
+      ? formatPaymentTokenAmountFromBaseUnits(balance ?? null, props.paymentTokenMeta)
       : authSession()?.token
         ? "Unavailable"
-        : "Sign in to view",
-  );
-  const assetBalanceLabel = createMemo(() =>
-    holder() ? formatAssetTokenBaseUnits(holder()?.balance ?? null) : "Sign in to view",
-  );
+        : "Sign in to view";
+    
+    console.log("💰 walletCashLabel computed:", {
+      holder: currentHolder,
+      balance,
+      label,
+    });
+    
+    return label;
+  });
+  
+  const assetBalanceLabel = createMemo(() => {
+    const currentHolder = holder();
+    const balance = currentHolder?.balance;
+    const label = currentHolder ? formatAssetTokenBaseUnits(balance ?? null) : "Sign in to view";
+    
+    console.log("📊 assetBalanceLabel computed:", {
+      holder: currentHolder,
+      balance,
+      label,
+    });
+    
+    return label;
+  });
+  
   const secondaryAssetMetricLabel = createMemo(() =>
     props.mode === "buy" ? "Allowance" : "Unlocked balance",
   );
+  
   const secondaryAssetMetricValue = createMemo(() => {
-    if (!holder()) {
+    const currentHolder = holder();
+    
+    if (!currentHolder) {
       return authSession()?.token ? "Unavailable" : "Sign in to view";
     }
 
     if (props.mode === "buy") {
-      return formatPaymentTokenAmountFromBaseUnits(
-        holder()?.payment_token_allowance_to_treasury ?? null,
+      const allowance = currentHolder?.payment_token_allowance_to_treasury;
+      const label = formatPaymentTokenAmountFromBaseUnits(
+        allowance ?? null,
         props.paymentTokenMeta,
       );
+      
+      console.log("🔓 Allowance computed:", {
+        holder: currentHolder,
+        allowance,
+        label,
+      });
+      
+      return label;
     }
 
-    return formatAssetTokenBaseUnits(holder()?.unlocked_balance ?? null);
+    const unlockedBalance = currentHolder?.unlocked_balance;
+    const label = formatAssetTokenBaseUnits(unlockedBalance ?? null);
+    
+    console.log("🔓 Unlocked balance computed:", {
+      holder: currentHolder,
+      unlockedBalance,
+      label,
+    });
+    
+    return label;
   });
 
   createEffect(() => {
@@ -213,8 +256,12 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
   });
 
   createEffect(() => {
-    props.detail?.holder;
-    setHolder(props.detail?.holder ?? null);
+    const newHolder = props.detail?.holder;
+    console.log("🔄 AssetTradeModal: detail.holder changed");
+    console.log("  - New holder from props:", newHolder);
+    console.log("  - Current holder state:", holder());
+    setHolder(newHolder ?? null);
+    console.log("  - Holder state updated to:", holder());
   });
 
   createEffect(() => {
@@ -327,29 +374,40 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
   const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault();
 
+    console.log("=== ASSET TRADE SUBMIT STARTED ===");
+    console.log("Mode:", props.mode);
+    console.log("Asset:", props.asset.symbol, props.asset.asset_address);
+
     const amount = normalizedAmount();
+    console.log("Normalized amount:", amount);
 
     if (!amount) {
+      console.log("❌ No amount provided");
       setErrorMessage("Enter a valid amount to continue.");
       setStatusMessage(null);
       return;
     }
 
     if (props.mode === "buy" && !canBuy()) {
+      console.log("❌ Buying not enabled");
       setErrorMessage("Buying is currently unavailable for this asset.");
       setStatusMessage(null);
       return;
     }
 
     if (props.mode === "sell" && !canSell()) {
+      console.log("❌ Selling not enabled");
       setErrorMessage("Selling is currently unavailable for this asset.");
       setStatusMessage(null);
       return;
     }
 
     const session = authSession();
+    console.log("Auth session:", session ? "✓ Present" : "✗ Missing");
+    console.log("User wallet:", session?.user.wallet?.wallet_address);
 
     if (!session?.token) {
+      console.log("❌ No auth token");
       setErrorMessage("Sign in with a linked wallet to continue.");
       setStatusMessage(null);
 
@@ -361,6 +419,7 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
     }
 
     if (!hasSmartAccountSession()) {
+      console.log("❌ Not a smart account session");
       setErrorMessage(
         "Asset trading requires a linked smart-account wallet for the gasless execution flow.",
       );
@@ -368,57 +427,102 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
       return;
     }
 
+    console.log("✓ All validations passed, starting trade...");
     setIsSubmitting(true);
     setStatusMessage(props.mode === "buy" ? "Preparing buy..." : "Preparing sell...");
     setErrorMessage(null);
     setResult(null);
 
     try {
+      console.log("📊 Getting preview...");
       const previewResponse =
         preview() ??
         (props.mode === "buy"
           ? await assetClient.previewPurchase(props.asset.asset_address, { token_amount: amount })
           : await assetClient.previewRedemption(props.asset.asset_address, { token_amount: amount }));
 
+      console.log("Preview response:", previewResponse);
       setPreview(previewResponse);
 
       if (props.mode === "buy") {
+        console.log("💰 Processing BUY...");
         if (allowanceNeedsApproval(holder(), previewResponse.value)) {
+          console.log("🔓 Approval needed, approving...");
           setStatusMessage("Approving payment token...");
           const approvalResponse = await assetClient.approvePaymentToken(
             session.token,
             props.asset.asset_address,
             { amount: previewResponse.value },
           );
+          console.log("Approval response:", approvalResponse);
           setHolder(approvalResponse.holder);
           props.onCompleted(approvalResponse);
         }
 
+        console.log("📤 Submitting purchase...");
         setStatusMessage("Submitting buy...");
         const response = await assetClient.purchaseAsset(session.token, props.asset.asset_address, {
           token_amount: amount,
         });
+
+        console.log("✅ BUY SUCCESS!");
+        console.log("Response:", response);
+        console.log("New holder state:", response.holder);
+        console.log("Transaction hash:", response.tx_hash);
 
         setResult(response);
         setHolder(response.holder);
         props.onCompleted(response);
         setStatusMessage("Buy submitted.");
       } else {
+        console.log("💸 Processing SELL...");
+        console.log("Current holder state BEFORE sell:", holder());
+        console.log("  - Balance:", holder()?.balance);
+        console.log("  - Unlocked balance:", holder()?.unlocked_balance);
+        console.log("  - Payment token balance:", holder()?.payment_token_balance);
+
         setStatusMessage("Submitting sell...");
+        console.log("📤 Calling assetClient.redeemAsset...");
+        console.log("  - Token:", session.token.substring(0, 20) + "...");
+        console.log("  - Asset address:", props.asset.asset_address);
+        console.log("  - Amount:", amount);
+
         const response = await assetClient.redeemAsset(session.token, props.asset.asset_address, {
           amount,
         });
 
+        console.log("✅ SELL SUCCESS!");
+        console.log("Response:", response);
+        console.log("New holder state AFTER sell:", response.holder);
+        console.log("  - Balance:", response.holder?.balance);
+        console.log("  - Unlocked balance:", response.holder?.unlocked_balance);
+        console.log("  - Payment token balance:", response.holder?.payment_token_balance);
+        console.log("Transaction hash:", response.tx_hash);
+
+        console.log("📝 Updating local state...");
         setResult(response);
         setHolder(response.holder);
+        console.log("✓ Local holder state updated");
+
+        console.log("📢 Calling onCompleted callback...");
         props.onCompleted(response);
+        console.log("✓ onCompleted callback executed");
+
         setStatusMessage("Sell submitted.");
+        console.log("=== SELL COMPLETED SUCCESSFULLY ===");
       }
     } catch (error) {
+      console.error("❌ TRADE FAILED!");
+      console.error("Error:", error);
+      console.error("Error message:", getErrorMessage(error));
+      if (error instanceof Error) {
+        console.error("Error stack:", error.stack);
+      }
       setStatusMessage(null);
       setErrorMessage(getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
+      console.log("=== ASSET TRADE SUBMIT ENDED ===");
     }
   };
 

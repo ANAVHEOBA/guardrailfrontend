@@ -381,17 +381,36 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
   };
 
   const applyTradeResult = (response: GaslessAssetActionResponse) => {
+    console.log("=== APPLY TRADE RESULT CALLED ===");
+    console.log("Response received:", response);
+    console.log("New asset state:", response.asset);
+    console.log("New holder state:", response.holder);
+    console.log("  - Balance:", response.holder?.balance);
+    console.log("  - Unlocked balance:", response.holder?.unlocked_balance);
+    console.log("  - Payment token balance:", response.holder?.payment_token_balance);
+
+    console.log("Current detail state BEFORE update:", detail());
+
     setDetail(current => {
+      console.log("setDetail callback - current:", current);
+      
       if (!current) {
+        console.log("⚠️ No current detail, returning null");
         return current;
       }
 
-      return {
+      const updated = {
         ...current,
         asset: response.asset,
         holder: response.holder,
       };
+
+      console.log("✓ Updated detail state:", updated);
+      return updated;
     });
+
+    console.log("Detail state AFTER update:", detail());
+    console.log("=== APPLY TRADE RESULT COMPLETED ===");
   };
 
   createEffect(() => {
