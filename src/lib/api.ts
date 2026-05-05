@@ -44,7 +44,14 @@ export function normalizeApiBaseUrl(rawBaseUrl: string | undefined): string {
     return "";
   }
 
-  return rawBaseUrl.replace(/\/+$/, "");
+  let url = rawBaseUrl.trim().replace(/\/+$/, "");
+
+  // If the URL looks like a domain but is missing a protocol, prepend https://
+  if (url && !url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("/")) {
+    url = `https://${url}`;
+  }
+
+  return url;
 }
 
 export function encodePathSegment(value: string): string {
