@@ -67,27 +67,7 @@ function FilterDropdown(props: { label: string; options: string[] }) {
         </span>
       </button> */}
 
-      <Show when={open()}>
-        <div class="pm-filter-menu" role="listbox">
-          <For each={props.options}>
-            {option => (
-              <button
-                type="button"
-                role="option"
-                aria-selected={selected() === option}
-                class={`pm-filter-menu__item${selected() === option ? " pm-filter-menu__item--active" : ""}`}
-                onClick={() => {
-                  setSelected(option);
-                  setOpen(false);
-                  document.removeEventListener("click", handleOutsideClick);
-                }}
-              >
-                {option}
-              </button>
-            )}
-          </For>
-        </div>
-      </Show>
+
     </div>
   );
 }
