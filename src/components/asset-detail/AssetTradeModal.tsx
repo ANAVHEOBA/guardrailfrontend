@@ -259,7 +259,16 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
     const newHolder = props.detail?.holder;
     console.log("🔄 AssetTradeModal: detail.holder changed");
     console.log("  - New holder from props:", newHolder);
+    console.log("  - props.detail:", props.detail);
     console.log("  - Current holder state:", holder());
+    
+    // Don't reset holder to null if we already have valid holder data
+    // This prevents the holder from being cleared when props.detail temporarily becomes null
+    if (!newHolder && holder()) {
+      console.log("  ⚠️ Skipping null update - keeping existing holder state");
+      return;
+    }
+    
     setHolder(newHolder ?? null);
     console.log("  - Holder state updated to:", holder());
   });
@@ -296,21 +305,37 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
       return;
     }
 
+    console.log("🔄 Holder fetch effect triggered");
+    console.log("  - Modal open:", props.open);
+    console.log("  - Auth session:", authSession());
+    console.log("  - Current holder:", holder());
+    console.log("  - Result exists:", Boolean(result()));
+
+    // Don't refetch holder if we just completed a trade
+    if (result()) {
+      console.log("  ⚠️ Skipping holder fetch - trade just completed");
+      return;
+    }
+
     const walletAddress = authSession()?.user.wallet?.wallet_address?.trim();
 
     if (!walletAddress) {
+      console.log("  ⚠️ No wallet address, using props.detail.holder");
       setHolder(props.detail?.holder ?? null);
       return;
     }
 
     const version = ++holderRequestId;
+    console.log("  📡 Fetching holder state from API...");
     void assetClient
       .fetchAssetHolderState(props.asset.asset_address, walletAddress)
       .then(response => {
         if (version !== holderRequestId) {
+          console.log("  ⚠️ Stale holder fetch response, ignoring");
           return;
         }
 
+        console.log("  ✅ Holder state fetched:", response);
         setHolder(response);
       })
       .catch(() => {
@@ -318,6 +343,7 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
           return;
         }
 
+        console.log("  ❌ Holder fetch failed, using props.detail.holder");
         setHolder(props.detail?.holder ?? null);
       });
   });
