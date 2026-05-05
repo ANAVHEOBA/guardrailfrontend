@@ -8,7 +8,12 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = env.VITE_DEV_API_PROXY_TARGET?.trim();
 
   return {
-    plugins: [solidStart(), nitro()],
+    plugins: [
+      solidStart(),
+      nitro({
+        preset: process.env.VERCEL ? "vercel" : "node-server",
+      }),
+    ],
     server: proxyTarget
       ? {
           proxy: {
