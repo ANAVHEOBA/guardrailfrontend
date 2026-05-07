@@ -37,6 +37,7 @@ import { orderClient } from "../lib/order/index.ts";
 import { clearStoredWalletPreference } from "../lib/wallet.ts";
 import AuthModal from "./AuthModal";
 import DepositModal from "./DepositModal";
+import HowItWorksModal from "./HowItWorksModal";
 
 const EVENT_PRIMARY_MARKET_STORAGE_PREFIX = "pm-event-primary-market/v1:";
 const SEARCH_RESULT_LIMIT = 6;
@@ -451,6 +452,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isAuthModalOpen, setAuthModalOpen] = createSignal(false);
+  const [isHowItWorksOpen, setHowItWorksOpen] = createSignal(false);
   const [isDepositModalOpen, setDepositModalOpen] = createSignal(false);
   const [authUser, setAuthUser] = createSignal<UserResponse | null>(null);
   const [authToken, setAuthToken] = createSignal<string | null>(null);
@@ -519,6 +521,10 @@ export default function Navbar() {
     setDepositModalOpen(true);
   };
   const closeDepositModal = () => setDepositModalOpen(false);
+  
+  const openHowItWorks = () => setHowItWorksOpen(true);
+  const closeHowItWorks = () => setHowItWorksOpen(false);
+
   const signOut = () => {
     clearStoredAuthSession();
     clearStoredWalletPreference();
@@ -1017,7 +1023,7 @@ export default function Navbar() {
                 when={!isAuthenticated()}
                 fallback={<div class="pm-navbar__search-balance-spacer" aria-hidden="true" />}
               >
-                <button class="pm-link-action" type="button">
+                <button class="pm-link-action" type="button" onClick={openHowItWorks}>
                   <InfoIcon />
                   <span>How it works</span>
                 </button>
@@ -1221,6 +1227,14 @@ export default function Navbar() {
         user={authUser()}
         onClose={closeDepositModal}
         onBalanceRefresh={() => void refreshNavbarBalance()}
+      />
+      <HowItWorksModal
+        open={isHowItWorksOpen()}
+        onClose={closeHowItWorks}
+        onSignUp={() => {
+          closeHowItWorks();
+          openAuthModal();
+        }}
       />
     </>
   );

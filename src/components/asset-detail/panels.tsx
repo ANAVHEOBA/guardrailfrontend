@@ -77,11 +77,11 @@ export function LoadingState() {
             <div class="pm-asset-market__chart-frame pm-compact-card__placeholder" />
           </div>
 
-          <aside class="pm-asset-market__about-panel">
+          <aside class="pm-asset-market__trade-panel">
             <div class="pm-compact-card__line pm-asset-detail__line--small" />
-            <div class="pm-compact-card__line pm-asset-detail__line--long" />
             <div class="pm-compact-card__line pm-asset-detail__line--medium" />
             <div class="pm-compact-card__line pm-asset-detail__line--long" />
+            <div class="pm-compact-card__line pm-asset-detail__line--medium" />
           </aside>
         </div>
       </section>

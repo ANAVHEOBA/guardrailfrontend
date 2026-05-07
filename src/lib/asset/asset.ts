@@ -16,6 +16,7 @@ import type {
   AssetHolderStateResponse,
   AssetListResponse,
   AssetPaymentTokenQuoteResponse,
+  AssetPortfolioResponse,
   AssetPreviewRequest,
   AssetPreviewResponse,
   AssetResponse,
@@ -67,6 +68,7 @@ export interface AssetClient {
     assetAddress: string,
     walletAddress: string,
   ): Promise<AssetHolderStateResponse>;
+  fetchMyAssetPortfolio(token: string): Promise<AssetPortfolioResponse>;
   previewPurchase(assetAddress: string, request: AssetPreviewRequest): Promise<AssetPreviewResponse>;
   previewRedemption(
     assetAddress: string,
@@ -224,6 +226,12 @@ export function createAssetClient(options: AssetClientOptions = {}): AssetClient
         baseUrl,
         `${assetPath(assetAddress)}/holders/${encodePathSegment(walletAddress)}`,
       );
+    },
+
+    fetchMyAssetPortfolio(token) {
+      return requestJson<AssetPortfolioResponse>(baseUrl, "/me/asset-portfolio", {
+        headers: withBearerToken(token),
+      });
     },
 
     previewPurchase(assetAddress, request) {

@@ -25,7 +25,6 @@ import AssetDetailReferencePanels from "./AssetDetailReferencePanels";
 import AssetDetailSourcesSection from "./AssetDetailSourcesSection";
 import AssetDetailStatsSection from "./AssetDetailStatsSection";
 import AssetDetailSummaryGrid from "./AssetDetailSummaryGrid";
-import AssetTradeModal from "./AssetTradeModal";
 import {
   loadAssetHistoryRange,
   primeAssetDetailBundle,
@@ -34,8 +33,6 @@ import {
   readProjectedAssetDetailView,
 } from "./data";
 import {
-  formatLookupLabel,
-  readCategoryChips,
   readDisplayedRawPrice,
   readSpreadText,
   readStatusTone,
@@ -97,13 +94,9 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
   const [authSession, setAuthSession] = createSignal<StoredAuthSession | null>(null);
   const [priceMode, setPriceMode] = createSignal<PriceMode>("buy");
   const [timeRange, setTimeRange] = createSignal<TimeRange>("1D");
-  const [showFullSummary, setShowFullSummary] = createSignal(false);
-  const [copiedField, setCopiedField] = createSignal<string | null>(null);
-  const [tradeModalOpen, setTradeModalOpen] = createSignal(false);
   let requestVersion = 0;
   let historyRequestVersion = 0;
   let holderRequestVersion = 0;
-  let copyResetTimer: ReturnType<typeof setTimeout> | undefined;
 
   const asset = createMemo(() => detail()?.asset ?? null);
   const title = createMemo(() => {
@@ -114,9 +107,8 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
     const currentAsset = asset();
     return currentAsset ? readSummaryCopy(currentAsset) : "";
   });
-  const isSummaryLong = createMemo(() => summary().length > 220);
   const summaryPreview = createMemo(() => {
-    if (showFullSummary() || !isSummaryLong()) {
+    if (summary().length <= 220) {
       return summary();
     }
 
@@ -190,15 +182,6 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
         )
       : null;
   });
-  const paymentTokenLabel = createMemo(() => {
-    const currentAsset = asset();
-
-    if (!currentAsset) {
-      return "Not available";
-    }
-
-    return `${paymentTokenMeta().symbol} · ${currentAsset.payment_token_address.slice(0, 6)}...${currentAsset.payment_token_address.slice(-4)}`;
-  });
   const historyCandles = createMemo(() => readHistorySeries(history(), priceMode()));
   const chartSeries = createMemo(() => {
     const currentAsset = asset();
@@ -227,16 +210,6 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
 
     return "Primary market history";
   });
-  const categoryChips = createMemo(() => {
-    const currentAsset = asset();
-    return currentAsset ? readCategoryChips(currentAsset) : [];
-  });
-  const buyEnabled = createMemo(
-    () =>
-      Boolean(asset()?.self_service_purchase_enabled) &&
-      (detail()?.compliance_rules?.subscriptions_enabled ?? true),
-  );
-  const sellEnabled = createMemo(() => detail()?.compliance_rules?.redemptions_enabled ?? true);
 
   const loadDetail = async (identifier: string) => {
     const version = ++requestVersion;
@@ -247,7 +220,6 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
     setStatus(hasResolvedDetail(projectedDetail) ? "ready" : "loading");
     setError(null);
     setDetail(projectedDetail);
-    setShowFullSummary(false);
     setPriceMode("buy");
     setTimeRange("1D");
     setHistory(projectedHistory);
@@ -354,63 +326,18 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
     }
   };
 
-  const copyValue = async (field: string, value: string) => {
-    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopiedField(field);
-
-      if (copyResetTimer) {
-        clearTimeout(copyResetTimer);
-      }
-
-      copyResetTimer = setTimeout(() => {
-        setCopiedField(current => (current === field ? null : current));
-      }, 1600);
-    } catch {
-      // Ignore clipboard failures and keep the UI stable.
-    }
-  };
-
-  const openTradeModal = (mode: PriceMode) => {
-    setPriceMode(mode);
-    setTradeModalOpen(true);
-  };
-
   const applyTradeResult = (response: GaslessAssetActionResponse) => {
-    console.log("=== APPLY TRADE RESULT CALLED ===");
-    console.log("Response received:", response);
-    console.log("New asset state:", response.asset);
-    console.log("New holder state:", response.holder);
-    console.log("  - Balance:", response.holder?.balance);
-    console.log("  - Unlocked balance:", response.holder?.unlocked_balance);
-    console.log("  - Payment token balance:", response.holder?.payment_token_balance);
-
-    console.log("Current detail state BEFORE update:", detail());
-
     setDetail(current => {
-      console.log("setDetail callback - current:", current);
-      
       if (!current) {
-        console.log("⚠️ No current detail, returning null");
         return current;
       }
 
-      const updated = {
+      return {
         ...current,
         asset: response.asset,
         holder: response.holder,
       };
-
-      console.log("✓ Updated detail state:", updated);
-      return updated;
     });
-
-    console.log("Detail state AFTER update:", detail());
-    console.log("=== APPLY TRADE RESULT COMPLETED ===");
   };
 
   createEffect(() => {
@@ -483,12 +410,6 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
     authSession()?.user.wallet?.wallet_address;
     asset()?.asset_address;
     void syncHolderState();
-  });
-
-  onCleanup(() => {
-    if (copyResetTimer) {
-      clearTimeout(copyResetTimer);
-    }
   });
 
   return (
@@ -565,34 +486,25 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
                       <AssetDetailHero
                         asset={registryAsset}
                         baseUnitsLabel={rawPriceLabel()}
-                        buyEnabled={buyEnabled()}
-                        categoryChips={categoryChips()}
                         chart={chart()}
                         chartChange={chartChange()}
                         chartHasHistory={chartHasHistory()}
-                        copiedField={copiedField()}
+                        detail={assetDetail}
                         displayPrice={displayPrice()}
                         history={history()}
                         historyError={historyError()}
                         historyLabel={historyLabel()}
                         historyStatus={historyStatus()}
-                        isAuthenticated={Boolean(authSession()?.token)}
-                        isSummaryLong={isSummaryLong()}
-                        lookupLabel={formatLookupLabel(props.mode, props.identifier())}
                         marketReferencePrice={marketReferencePrice()}
-                        onCopyValue={(field, value) => void copyValue(field, value)}
-                        onOpenTrade={openTradeModal}
+                        onCompleted={applyTradeResult}
                         onSetPriceMode={setPriceMode}
                         onSetTimeRange={setTimeRange}
-                        onToggleSummary={() => setShowFullSummary(open => !open)}
-                        paymentTokenLabel={paymentTokenLabel()}
+                        paymentTokenMeta={paymentTokenMeta()}
                         priceMode={priceMode()}
-                        sellEnabled={sellEnabled()}
                         spreadText={readSpreadText(registryAsset, priceMode(), paymentTokenMeta())}
                         sourceHref={registryAsset.sources[0]}
                         statusTone={statusTone}
                         summaryPreview={summaryPreview()}
-                        showFullSummary={showFullSummary()}
                         timeRange={timeRange()}
                         timeRanges={TIME_RANGES}
                       />
@@ -621,17 +533,6 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
 
                       <AssetDetailSourcesSection asset={registryAsset} />
                     </section>
-
-                    <AssetTradeModal
-                      asset={registryAsset}
-                      detail={assetDetail}
-                      mode={priceMode()}
-                      onClose={() => setTradeModalOpen(false)}
-                      onCompleted={applyTradeResult}
-                      onModeChange={setPriceMode}
-                      open={tradeModalOpen()}
-                      paymentTokenMeta={paymentTokenMeta()}
-                    />
                   </>
                 );
               }}

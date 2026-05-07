@@ -87,23 +87,23 @@ const STEPS: StepConfig[] = [
   {
     icon: SearchMarketIcon,
     badge: "Step 1",
-    title: "Discover Events",
+    title: "Discover Assets",
     description:
-      "Browse prediction markets across politics, crypto, sports, and more. Each event has clear outcomes you can trade on — find the ones you know best.",
+      "Browse tokenized real-world assets across real estate, fixed income, commodities, and more. Each asset is backed by real value — explore opportunities that match your investment goals.",
   },
   {
     icon: PredictIcon,
     badge: "Step 2",
-    title: "Make Your Prediction",
+    title: "Invest in Assets",
     description:
-      "Buy Yes or No shares on any outcome. Shares are priced between $0 and $1 — the lower the price, the higher the potential return if you're right.",
+      "Allocate capital to real-world assets like bonds, real estate, and commodities. Each asset has transparent pricing and projected returns — invest based on your strategy.",
   },
   {
     icon: EarnIcon,
     badge: "Step 3",
     title: "Earn Returns",
     description:
-      "When the event resolves, winning shares pay out $1 each. Sell anytime before resolution if the odds move in your favor — you're always in control.",
+      "Generate returns from real-world assets through yield, interest, or price appreciation. Track performance over time and exit your position whenever you choose.",
   },
 ];
 

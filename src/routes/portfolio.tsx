@@ -108,14 +108,14 @@ export default function PortfolioRoute() {
     setStatus("loading");
     setError(null);
 
-    void orderClient
+    orderClient
       .fetchMyPortfolio(token)
-      .then(response => {
+      .then(portfolioResponse => {
         if (requestId !== portfolioRequestVersion) {
           return;
         }
 
-        setPortfolio(response);
+        setPortfolio(portfolioResponse);
         setStatus("ready");
       })
       .catch(caughtError => {
@@ -164,6 +164,7 @@ export default function PortfolioRoute() {
 
   const visibleMarkets = createMemo(() => portfolio()?.markets.slice(0, 8) ?? []);
   const visibleHistory = createMemo(() => portfolio()?.history.slice(0, 8) ?? []);
+  const visibleAssetHistory = createMemo(() => portfolio()?.asset_history?.slice(0, 8) ?? []);
   const retryLoad = () => {
     const activeSession = readStoredAuthSession();
     setSession(activeSession ? { ...activeSession } : null);
@@ -171,7 +172,7 @@ export default function PortfolioRoute() {
 
   return (
     <PublicPageLayout
-      title="Portfolio | Sabimarket"
+      title="Portfolio | GuardRail"
       kicker="Account"
       heading="Portfolio"
       summary="This page is now backed by the authenticated `/me/portfolio` endpoint."
@@ -278,6 +279,44 @@ export default function PortfolioRoute() {
                               <p class="pm-detail__timeline-detail">
                                 {trade.event.title} • {formatExecutedAt(trade.executed_at)}
                               </p>
+                            </div>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+                </article>
+
+                <article class="pm-detail__card">
+                  <h2 class="pm-detail__card-title">Asset Trade History</h2>
+                  <p class="pm-detail__card-copy">
+                    Latest asset purchase and redemption history from `/me/portfolio`.
+                  </p>
+
+                  <Show
+                    when={visibleAssetHistory().length > 0}
+                    fallback={<p class="pm-detail__card-copy">No asset trades yet.</p>}
+                  >
+                    <div class="pm-detail__timeline">
+                      <For each={visibleAssetHistory()}>
+                        {trade => (
+                          <div class="pm-detail__timeline-item">
+                            <span class="pm-detail__timeline-dot" aria-hidden="true" />
+                            <div class="pm-detail__timeline-copy">
+                              <p class="pm-detail__timeline-title">
+                                {trade.trade_type.toUpperCase()} {trade.asset_symbol}
+                              </p>
+                              <p class="pm-detail__timeline-meta">
+                                {formatUsdAmount(trade.payment_amount)} • {trade.token_amount} tokens
+                              </p>
+                              <p class="pm-detail__timeline-detail">
+                                {trade.asset_name} • {formatExecutedAt(trade.executed_at)}
+                              </p>
+                              <Show when={trade.tx_hash}>
+                                <p class="pm-detail__timeline-detail" style="font-family: monospace; font-size: 0.75rem;">
+                                  {trade.tx_hash?.slice(0, 10)}...{trade.tx_hash?.slice(-8)}
+                                </p>
+                              </Show>
                             </div>
                           </div>
                         )}

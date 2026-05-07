@@ -127,10 +127,26 @@ export interface PortfolioTradeHistoryItemResponse {
   executed_at: IsoDateTimeString;
 }
 
+export interface AssetTradeHistoryItemResponse {
+  id: string;
+  execution_source: string;
+  trade_type: "purchase" | "redemption";
+  asset_address: string;
+  asset_name: string;
+  asset_symbol: string;
+  asset_image_url: string | null;
+  token_amount: string;
+  payment_amount: string;
+  price_per_token: string;
+  tx_hash: string | null;
+  executed_at: IsoDateTimeString;
+}
+
 export interface MyPortfolioResponse {
   wallet_address: string;
   account_kind: string;
   summary: PortfolioSummaryResponse;
   markets: PortfolioMarketSummaryResponse[];
   history: PortfolioTradeHistoryItemResponse[];
+  asset_history?: AssetTradeHistoryItemResponse[];
 }

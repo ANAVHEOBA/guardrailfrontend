@@ -1,13 +1,15 @@
 import { For, Show } from "solid-js";
 
-import type { AssetHistoryResponse, AssetResponse } from "~/lib";
+import type {
+  AssetDetailResponse,
+  AssetHistoryResponse,
+  AssetResponse,
+  PaymentTokenDisplayMeta,
+  GaslessAssetActionResponse,
+} from "~/lib";
 
-import {
-  formatDisplayNumber,
-  formatUnixTimestamp,
-  readHeadlineMeta,
-  truncateMiddle,
-} from "./format";
+import { formatDisplayNumber, formatUnixTimestamp, readHeadlineMeta } from "./format";
+import AssetTradePanel from "./AssetTradePanel";
 import type {
   ChartMetrics,
   HistoryChangeSummary,
@@ -19,34 +21,25 @@ import type {
 interface AssetDetailHeroProps {
   asset: AssetResponse;
   baseUnitsLabel: string;
-  buyEnabled: boolean;
-  categoryChips: string[];
   chart: ChartMetrics;
   chartChange: HistoryChangeSummary | null;
   chartHasHistory: boolean;
-  copiedField: string | null;
+  detail: AssetDetailResponse | null;
   displayPrice: string;
   history: AssetHistoryResponse | null;
   historyError: string | null;
   historyLabel: string;
   historyStatus: HistoryLoadStatus;
-  isAuthenticated: boolean;
-  isSummaryLong: boolean;
-  lookupLabel: string;
   marketReferencePrice?: string | null;
-  onCopyValue: (field: string, value: string) => void;
-  onOpenTrade: (mode: PriceMode) => void;
+  onCompleted: (response: GaslessAssetActionResponse) => void;
   onSetPriceMode: (mode: PriceMode) => void;
   onSetTimeRange: (range: TimeRange) => void;
-  onToggleSummary: () => void;
-  paymentTokenLabel: string;
+  paymentTokenMeta: PaymentTokenDisplayMeta;
   priceMode: PriceMode;
-  sellEnabled: boolean;
   spreadText: string;
   sourceHref?: string | null;
   statusTone: "positive" | "warning" | "neutral";
   summaryPreview: string;
-  showFullSummary: boolean;
   timeRange: TimeRange;
   timeRanges: readonly TimeRange[];
 }
@@ -98,6 +91,11 @@ export default function AssetDetailHero(props: AssetDetailHeroProps) {
         </div>
       </div>
 
+      <div class="pm-asset-market__hero-intro">
+        <p class="pm-asset-market__hero-meta">{readHeadlineMeta(props.asset)}</p>
+        <p class="pm-asset-market__hero-lede">{props.summaryPreview}</p>
+      </div>
+
       <div class="pm-asset-market__hero-grid">
         <section
           class={`pm-asset-market__price-surface pm-asset-market__price-surface--${props.priceMode}`}
@@ -147,28 +145,6 @@ export default function AssetDetailHero(props: AssetDetailHeroProps) {
               </div>
             </div>
 
-            <div class="pm-asset-market__price-actions">
-              <div class="pm-asset-market__toggle">
-                <button
-                  class={`pm-asset-market__toggle-button${
-                    props.priceMode === "buy" ? " pm-asset-market__toggle-button--active" : ""
-                  }`}
-                  type="button"
-                  onClick={() => props.onSetPriceMode("buy")}
-                >
-                  Buy
-                </button>
-                <button
-                  class={`pm-asset-market__toggle-button${
-                    props.priceMode === "sell" ? " pm-asset-market__toggle-button--active" : ""
-                  }`}
-                  type="button"
-                  onClick={() => props.onSetPriceMode("sell")}
-                >
-                  Sell
-                </button>
-              </div>
-            </div>
           </div>
 
           <div class="pm-asset-market__range-row">
@@ -242,8 +218,8 @@ export default function AssetDetailHero(props: AssetDetailHeroProps) {
           <p class="pm-asset-market__chart-note">
             <Show when={props.chartHasHistory}>
               <span>
-                Settlement chart · {props.historyLabel} · {props.history?.interval ?? "unknown interval"} ·
-                updated {formatUnixTimestamp(props.history?.last_updated_at)}
+                Settlement chart · {props.historyLabel} · {props.history?.interval ?? "unknown interval"} · updated{" "}
+                {formatUnixTimestamp(props.history?.last_updated_at)}
               </span>
             </Show>
             <Show when={!props.chartHasHistory && props.historyStatus === "ready"}>
@@ -258,115 +234,14 @@ export default function AssetDetailHero(props: AssetDetailHeroProps) {
           </p>
         </section>
 
-        <aside class="pm-asset-market__about-panel">
-          <div class="pm-asset-market__about-head">
-            <p class="pm-asset-market__panel-kicker">About</p>
-            <p class="pm-asset-market__panel-subcopy">{readHeadlineMeta(props.asset)}</p>
-          </div>
-
-          <p class="pm-asset-market__about-copy">
-            {props.summaryPreview}
-            <Show when={props.isSummaryLong}>
-              <button
-                class="pm-asset-market__text-button"
-                type="button"
-                onClick={props.onToggleSummary}
-              >
-                {props.showFullSummary ? "Show less" : "Show more"}
-              </button>
-            </Show>
-          </p>
-
-          <div class="pm-asset-market__fact-stack">
-            <div class="pm-asset-market__fact">
-              <span class="pm-asset-market__fact-label">Category</span>
-              <div class="pm-asset-market__chip-row">
-                <For each={props.categoryChips}>
-                  {chip => <span class="pm-asset-market__chip">{chip}</span>}
-                </For>
-              </div>
-            </div>
-
-            <div class="pm-asset-market__fact">
-              <span class="pm-asset-market__fact-label">Onchain address</span>
-              <div class="pm-asset-market__address-row">
-                <span class="pm-asset-market__address-value">
-                  {truncateMiddle(props.asset.asset_address)}
-                </span>
-                <button
-                  class="pm-asset-market__copy-button"
-                  type="button"
-                  onClick={() => props.onCopyValue("asset_address", props.asset.asset_address)}
-                >
-                  {props.copiedField === "asset_address" ? "Copied" : "Copy"}
-                </button>
-              </div>
-            </div>
-
-            <div class="pm-asset-market__fact-grid">
-              <div class="pm-asset-market__fact">
-                <span class="pm-asset-market__fact-label">Proposal ID</span>
-                <span class="pm-asset-market__fact-value">{props.asset.proposal_id}</span>
-              </div>
-              <div class="pm-asset-market__fact">
-                <span class="pm-asset-market__fact-label">Asset type</span>
-                <span class="pm-asset-market__fact-value">
-                  {props.asset.asset_type_name ??
-                    props.asset.asset_type_id_text ??
-                    props.asset.asset_type_id}
-                </span>
-              </div>
-              <div class="pm-asset-market__fact">
-                <span class="pm-asset-market__fact-label">Payment token</span>
-                <span class="pm-asset-market__fact-value">{props.paymentTokenLabel}</span>
-              </div>
-              <div class="pm-asset-market__fact">
-                <span class="pm-asset-market__fact-label">Lookup used</span>
-                <span class="pm-asset-market__fact-value">{props.lookupLabel}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="pm-asset-market__trade-cta">
-            <div class="pm-asset-market__trade-copy">
-              <p class="pm-asset-market__fact-label">Trade</p>
-              <p class="pm-asset-market__panel-subcopy">
-                {props.isAuthenticated
-                  ? "Use your linked wallet to preview and submit buys or redemptions."
-                  : "Sign in with your linked wallet to buy or redeem this asset."}
-              </p>
-            </div>
-
-            <div class="pm-asset-market__trade-actions">
-              <button
-                class="pm-button pm-button--primary"
-                type="button"
-                disabled={!props.buyEnabled}
-                onClick={() => props.onOpenTrade("buy")}
-              >
-                Buy asset
-              </button>
-              <button
-                class="pm-button pm-button--ghost"
-                type="button"
-                disabled={!props.sellEnabled}
-                onClick={() => props.onOpenTrade("sell")}
-              >
-                Sell asset
-              </button>
-            </div>
-
-            <Show when={!props.buyEnabled || !props.sellEnabled}>
-              <p class="pm-asset-market__modal-note">
-                {!props.buyEnabled && !props.sellEnabled
-                  ? "Trading is currently unavailable for this asset."
-                  : !props.buyEnabled
-                    ? "Buying is currently unavailable for this asset."
-                    : "Selling is currently unavailable for this asset."}
-              </p>
-            </Show>
-          </div>
-        </aside>
+        <AssetTradePanel
+          asset={props.asset}
+          detail={props.detail}
+          onCompleted={props.onCompleted}
+          onModeChange={props.onSetPriceMode}
+          paymentTokenMeta={props.paymentTokenMeta}
+          question="Choose subscription or redemption pricing and enter your size."
+        />
       </div>
     </section>
   );

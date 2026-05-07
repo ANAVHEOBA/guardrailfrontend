@@ -25,6 +25,7 @@ import type { PriceMode } from "./types";
 interface AssetTradeModalProps {
   asset: AssetResponse;
   detail: AssetDetailResponse | null;
+  initialAmount?: string;
   mode: PriceMode;
   onClose: () => void;
   onCompleted: (response: GaslessAssetActionResponse) => void;
@@ -297,6 +298,7 @@ export default function AssetTradeModal(props: AssetTradeModalProps) {
       return;
     }
 
+    setAmountInput(props.initialAmount?.trim() ?? "");
     setAuthSession(readStoredAuthSession());
   });
 

@@ -322,3 +322,31 @@ export interface GaslessAssetActionResponse {
   asset: AssetResponse;
   holder: AssetHolderStateResponse;
 }
+
+export interface AssetTradeHistoryItemResponse {
+  id: string;
+  execution_source: string;
+  trade_type: "purchase" | "redemption";
+  asset_address: string;
+  asset_name: string;
+  asset_symbol: string;
+  asset_image_url: string | null;
+  token_amount: string;
+  payment_amount: string;
+  price_per_token: string;
+  tx_hash: string | null;
+  executed_at: IsoDateTimeString;
+}
+
+export interface AssetPortfolioSummaryResponse {
+  total_assets_value: string;
+  total_invested: string;
+  total_redeemed: string;
+}
+
+export interface AssetPortfolioResponse {
+  wallet_address: string;
+  summary: AssetPortfolioSummaryResponse;
+  assets: AssetHolderStateResponse[];
+  history: AssetTradeHistoryItemResponse[];
+}
