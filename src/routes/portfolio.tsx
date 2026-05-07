@@ -1,6 +1,13 @@
-import { A } from "@solidjs/router";
+import { A, type RouteDefinition } from "@solidjs/router";
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
+import PortfolioAssetRequestsSection from "~/components/portfolio/PortfolioAssetRequestsSection.tsx";
+import {
+  primePortfolioPageBundle,
+  primeStoredPortfolioPageBundle,
+  readCachedPortfolioPageBundle,
+  type PortfolioPageBundle,
+} from "~/components/portfolio/data.ts";
 import PublicPageLayout from "~/components/public-browser/PublicPageLayout.tsx";
 import PublicState from "~/components/public-browser/PublicState.tsx";
 import {
@@ -8,9 +15,12 @@ import {
   readStoredAuthSession,
   type StoredAuthSession,
 } from "~/lib/auth/session.ts";
-import { orderClient, type MyPortfolioResponse } from "~/lib/order/index.ts";
 
 type PortfolioPageStatus = "loading" | "ready" | "error" | "unauthenticated";
+
+export const route = {
+  preload: () => primeStoredPortfolioPageBundle(),
+} satisfies RouteDefinition;
 
 function formatUsdAmount(value: string): string {
   const parsedValue = Number(value);
@@ -51,9 +61,41 @@ function formatExecutedAt(value: string): string {
   }).format(new Date(parsedValue));
 }
 
-function buildMarketHref(eventSlug: string, marketSlug: string): string {
-  void marketSlug;
-  return `/event/${encodeURIComponent(eventSlug)}`;
+function buildEventHref(eventSlug: string | null | undefined): string | null {
+  const normalizedEventSlug = eventSlug?.trim();
+
+  if (!normalizedEventSlug) {
+    return null;
+  }
+
+  return `/event/${encodeURIComponent(normalizedEventSlug)}`;
+}
+
+function readMarketLabel(
+  label: string | null | undefined,
+  question: string | null | undefined,
+): string {
+  return label?.trim() || question?.trim() || "Unknown market";
+}
+
+function readEventTitle(title: string | null | undefined, marketLabel: string): string {
+  return title?.trim() || marketLabel;
+}
+
+function readUppercaseLabel(
+  value: string | null | undefined,
+  fallback: string,
+): string {
+  const normalizedValue = value?.trim();
+  return normalizedValue ? normalizedValue.toUpperCase() : fallback;
+}
+
+function readOutcomeLabel(value: string | null | undefined): string {
+  return value?.trim() || "Unknown outcome";
+}
+
+function readAssetSymbol(value: string | null | undefined): string {
+  return value?.trim() || "ASSET";
 }
 
 function openAuthModal() {
@@ -67,7 +109,7 @@ function openAuthModal() {
 export default function PortfolioRoute() {
   const [session, setSession] = createSignal<StoredAuthSession | null>(null);
   const [didReadSession, setDidReadSession] = createSignal(false);
-  const [portfolio, setPortfolio] = createSignal<MyPortfolioResponse | null>(null);
+  const [portfolioBundle, setPortfolioBundle] = createSignal<PortfolioPageBundle | null>(null);
   const [status, setStatus] = createSignal<PortfolioPageStatus>("loading");
   const [error, setError] = createSignal<string | null>(null);
   let portfolioRequestVersion = 0;
@@ -95,27 +137,37 @@ export default function PortfolioRoute() {
       return;
     }
 
-    const token = session()?.token?.trim() ?? "";
+    const activeSession = session();
+    const token = activeSession?.token?.trim() ?? "";
+    const userId = activeSession?.user?.id?.trim() ?? "";
 
-    if (token.length === 0) {
-      setPortfolio(null);
+    if (token.length === 0 || userId.length === 0) {
+      setPortfolioBundle(null);
       setError(null);
       setStatus("unauthenticated");
       return;
     }
 
     const requestId = ++portfolioRequestVersion;
-    setStatus("loading");
+    const cachedBundle = readCachedPortfolioPageBundle(userId);
+
+    if (cachedBundle) {
+      setPortfolioBundle(cachedBundle);
+      setStatus("ready");
+    } else {
+      setPortfolioBundle(null);
+      setStatus("loading");
+    }
+
     setError(null);
 
-    orderClient
-      .fetchMyPortfolio(token)
-      .then(portfolioResponse => {
+    primePortfolioPageBundle(token, userId)
+      .then(bundle => {
         if (requestId !== portfolioRequestVersion) {
           return;
         }
 
-        setPortfolio(portfolioResponse);
+        setPortfolioBundle(bundle);
         setStatus("ready");
       })
       .catch(caughtError => {
@@ -123,13 +175,25 @@ export default function PortfolioRoute() {
           return;
         }
 
-        setPortfolio(null);
-        setError(
-          caughtError instanceof Error ? caughtError.message : "Unable to load your portfolio.",
-        );
+        const message =
+          caughtError instanceof Error ? caughtError.message : "Unable to load your portfolio.";
+
+        if (cachedBundle) {
+          setError(message);
+          return;
+        }
+
+        setPortfolioBundle(null);
+        setError(message);
         setStatus("error");
       });
   });
+
+  const portfolio = createMemo(() => portfolioBundle()?.portfolio ?? null);
+  const initialAssetRequests = createMemo(
+    () => portfolioBundle()?.assetRequests.asset_requests ?? [],
+  );
+  const initialAssetTypes = createMemo(() => portfolioBundle()?.assetTypes.asset_types ?? []);
 
   const summaryCards = createMemo(() => {
     const data = portfolio();
@@ -165,6 +229,7 @@ export default function PortfolioRoute() {
   const visibleMarkets = createMemo(() => portfolio()?.markets.slice(0, 8) ?? []);
   const visibleHistory = createMemo(() => portfolio()?.history.slice(0, 8) ?? []);
   const visibleAssetHistory = createMemo(() => portfolio()?.asset_history?.slice(0, 8) ?? []);
+
   const retryLoad = () => {
     const activeSession = readStoredAuthSession();
     setSession(activeSession ? { ...activeSession } : null);
@@ -175,7 +240,7 @@ export default function PortfolioRoute() {
       title="Portfolio | GuardRail"
       kicker="Account"
       heading="Portfolio"
-      summary="This page is now backed by the authenticated `/me/portfolio` endpoint."
+      summary="Track your balances, trade history, and private asset-request workflow from one authenticated account page."
       actions={
         <Show when={portfolio()}>
           {data => (
@@ -194,7 +259,7 @@ export default function PortfolioRoute() {
       <Show when={status() === "unauthenticated"}>
         <PublicState
           title="Sign in to view your portfolio"
-          copy="Your portfolio page requires an authenticated session before it can load `/me/portfolio`."
+          copy="Your portfolio page requires an authenticated session before it can load account data."
           actionLabel="Open sign in"
           onAction={openAuthModal}
         />
@@ -203,7 +268,7 @@ export default function PortfolioRoute() {
       <Show when={status() === "error"}>
         <PublicState
           title="Unable to load portfolio"
-          copy={error() ?? "The portfolio endpoint could not be loaded."}
+          copy={error() ?? "The portfolio endpoints could not be loaded."}
           actionLabel="Try again"
           onAction={retryLoad}
         />
@@ -225,6 +290,12 @@ export default function PortfolioRoute() {
               </div>
             </section>
 
+            <PortfolioAssetRequestsSection
+              token={session()?.token ?? ""}
+              initialAssetRequests={initialAssetRequests()}
+              initialAssetTypes={initialAssetTypes()}
+            />
+
             <section class="pm-home__section">
               <div class="pm-detail__grid">
                 <article class="pm-detail__card">
@@ -239,15 +310,32 @@ export default function PortfolioRoute() {
                   >
                     <div class="pm-detail__list">
                       <For each={visibleMarkets()}>
-                        {market => (
-                          <A
-                            class="pm-detail__list-link"
-                            href={buildMarketHref(market.event.slug, market.market.slug)}
-                          >
-                            <span>{market.market.label}</span>
-                            <span>{formatUsdAmount(market.portfolio_balance)}</span>
-                          </A>
-                        )}
+                        {market => {
+                          const marketLabel = readMarketLabel(
+                            market.market?.label,
+                            market.market?.question,
+                          );
+                          const href = buildEventHref(market.event?.slug);
+
+                          return (
+                            <Show
+                              when={href}
+                              fallback={
+                                <div class="pm-detail__list-link">
+                                  <span>{marketLabel}</span>
+                                  <span>{formatUsdAmount(market.portfolio_balance)}</span>
+                                </div>
+                              }
+                            >
+                              {safeHref => (
+                                <A class="pm-detail__list-link" href={safeHref()}>
+                                  <span>{marketLabel}</span>
+                                  <span>{formatUsdAmount(market.portfolio_balance)}</span>
+                                </A>
+                              )}
+                            </Show>
+                          );
+                        }}
                       </For>
                     </div>
                   </Show>
@@ -256,7 +344,7 @@ export default function PortfolioRoute() {
                 <article class="pm-detail__card">
                   <h2 class="pm-detail__card-title">Recent Activity</h2>
                   <p class="pm-detail__card-copy">
-                    Latest trade history items returned by `/me/portfolio`.
+                    Latest trade history items returned by your account portfolio endpoint.
                   </p>
 
                   <Show
@@ -265,23 +353,32 @@ export default function PortfolioRoute() {
                   >
                     <div class="pm-detail__timeline">
                       <For each={visibleHistory()}>
-                        {trade => (
-                          <div class="pm-detail__timeline-item">
-                            <span class="pm-detail__timeline-dot" aria-hidden="true" />
-                            <div class="pm-detail__timeline-copy">
-                              <p class="pm-detail__timeline-title">
-                                {trade.action.toUpperCase()} {trade.outcome_label} in{" "}
-                                {trade.market.label}
-                              </p>
-                              <p class="pm-detail__timeline-meta">
-                                {formatUsdAmount(trade.usdc_amount)} • {trade.token_amount} shares
-                              </p>
-                              <p class="pm-detail__timeline-detail">
-                                {trade.event.title} • {formatExecutedAt(trade.executed_at)}
-                              </p>
+                        {trade => {
+                          const marketLabel = readMarketLabel(
+                            trade.market?.label,
+                            trade.market?.question,
+                          );
+                          const eventTitle = readEventTitle(trade.event?.title, marketLabel);
+                          const actionLabel = readUppercaseLabel(trade.action, "TRADE");
+                          const outcomeLabel = readOutcomeLabel(trade.outcome_label);
+
+                          return (
+                            <div class="pm-detail__timeline-item">
+                              <span class="pm-detail__timeline-dot" aria-hidden="true" />
+                              <div class="pm-detail__timeline-copy">
+                                <p class="pm-detail__timeline-title">
+                                  {actionLabel} {outcomeLabel} in {marketLabel}
+                                </p>
+                                <p class="pm-detail__timeline-meta">
+                                  {formatUsdAmount(trade.usdc_amount)} • {trade.token_amount} shares
+                                </p>
+                                <p class="pm-detail__timeline-detail">
+                                  {eventTitle} • {formatExecutedAt(trade.executed_at)}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        }}
                       </For>
                     </div>
                   </Show>
@@ -290,7 +387,7 @@ export default function PortfolioRoute() {
                 <article class="pm-detail__card">
                   <h2 class="pm-detail__card-title">Asset Trade History</h2>
                   <p class="pm-detail__card-copy">
-                    Latest asset purchase and redemption history from `/me/portfolio`.
+                    Latest asset purchase and redemption history from your account portfolio endpoint.
                   </p>
 
                   <Show
@@ -299,27 +396,35 @@ export default function PortfolioRoute() {
                   >
                     <div class="pm-detail__timeline">
                       <For each={visibleAssetHistory()}>
-                        {trade => (
-                          <div class="pm-detail__timeline-item">
-                            <span class="pm-detail__timeline-dot" aria-hidden="true" />
-                            <div class="pm-detail__timeline-copy">
-                              <p class="pm-detail__timeline-title">
-                                {trade.trade_type.toUpperCase()} {trade.asset_symbol}
-                              </p>
-                              <p class="pm-detail__timeline-meta">
-                                {formatUsdAmount(trade.payment_amount)} • {trade.token_amount} tokens
-                              </p>
-                              <p class="pm-detail__timeline-detail">
-                                {trade.asset_name} • {formatExecutedAt(trade.executed_at)}
-                              </p>
-                              <Show when={trade.tx_hash}>
-                                <p class="pm-detail__timeline-detail" style="font-family: monospace; font-size: 0.75rem;">
-                                  {trade.tx_hash?.slice(0, 10)}...{trade.tx_hash?.slice(-8)}
+                        {trade => {
+                          const tradeTypeLabel = readUppercaseLabel(trade.trade_type, "TRADE");
+                          const assetSymbol = readAssetSymbol(trade.asset_symbol);
+
+                          return (
+                            <div class="pm-detail__timeline-item">
+                              <span class="pm-detail__timeline-dot" aria-hidden="true" />
+                              <div class="pm-detail__timeline-copy">
+                                <p class="pm-detail__timeline-title">
+                                  {tradeTypeLabel} {assetSymbol}
                                 </p>
-                              </Show>
+                                <p class="pm-detail__timeline-meta">
+                                  {formatUsdAmount(trade.payment_amount)} • {trade.token_amount} tokens
+                                </p>
+                                <p class="pm-detail__timeline-detail">
+                                  {trade.asset_name} • {formatExecutedAt(trade.executed_at)}
+                                </p>
+                                <Show when={trade.tx_hash}>
+                                  <p
+                                    class="pm-detail__timeline-detail"
+                                    style="font-family: monospace; font-size: 0.75rem;"
+                                  >
+                                    {trade.tx_hash?.slice(0, 10)}...{trade.tx_hash?.slice(-8)}
+                                  </p>
+                                </Show>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        }}
                       </For>
                     </div>
                   </Show>
