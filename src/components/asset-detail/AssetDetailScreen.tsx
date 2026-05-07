@@ -4,9 +4,6 @@ import { Show, createEffect, createMemo, createSignal, onCleanup, sharedConfig }
 
 import {
   assetClient,
-  buildAssetAddressPageHref,
-  buildAssetProposalPageHref,
-  buildAssetSlugPageHref,
   DEFAULT_PAYMENT_TOKEN_DISPLAY_META,
   formatBaseUnitsLabel,
   formatMarketReferenceAmountFromBaseUnits,
@@ -48,7 +45,6 @@ import { LoadingState } from "./panels";
 import type {
   AssetDetailScreenProps,
   DetailLoadStatus,
-  DisplayedRoute,
   HistoryLoadStatus,
   PriceMode,
   TimeRange,
@@ -453,32 +449,6 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
                 const registryAsset = currentAsset();
                 const assetDetail = detail();
                 const statusTone = readStatusTone(registryAsset.asset_state_label);
-                const displayedRoutes: DisplayedRoute[] = [
-                  ...(registryAsset.slug
-                    ? [
-                        {
-                          label: "Slug route",
-                          value: registryAsset.slug,
-                          href: buildAssetSlugPageHref(registryAsset.slug),
-                        },
-                        {
-                          label: "Address route",
-                          value: registryAsset.asset_address,
-                          href: buildAssetAddressPageHref(registryAsset.asset_address),
-                        },
-                      ]
-                    : []),
-                  {
-                    label: "Proposal route",
-                    value: registryAsset.proposal_id,
-                    href: buildAssetProposalPageHref(registryAsset.proposal_id),
-                  },
-                  {
-                    label: "Address route",
-                    value: registryAsset.asset_address,
-                    href: buildAssetAddressPageHref(registryAsset.asset_address),
-                  },
-                ];
 
                 return (
                   <>
@@ -518,6 +488,7 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
                       <AssetDetailStatsSection
                         asset={registryAsset}
                         detail={assetDetail}
+                        isWalletConnected={Boolean(authSession()?.token)}
                         paymentTokenMeta={paymentTokenMeta()}
                         redemptionMarketReferencePrice={redemptionMarketReferencePrice()}
                         redemptionSettlementPrice={redemptionSettlementPrice()}
@@ -525,11 +496,7 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
                         subscriptionSettlementPrice={subscriptionSettlementPrice()}
                       />
 
-                      <AssetDetailReferencePanels
-                        asset={registryAsset}
-                        detail={assetDetail}
-                        displayedRoutes={displayedRoutes}
-                      />
+                      <AssetDetailReferencePanels detail={assetDetail} />
 
                       <AssetDetailSourcesSection asset={registryAsset} />
                     </section>

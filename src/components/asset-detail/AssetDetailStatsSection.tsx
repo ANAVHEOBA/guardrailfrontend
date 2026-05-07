@@ -9,13 +9,13 @@ import {
 import {
   formatDateTime,
   formatNumericString,
-  formatUnixTimestamp,
 } from "./format";
 import { StatPanel } from "./panels";
 
 interface AssetDetailStatsSectionProps {
   asset: AssetResponse;
   detail: AssetDetailResponse | null;
+  isWalletConnected: boolean;
   paymentTokenMeta: PaymentTokenDisplayMeta;
   redemptionMarketReferencePrice: string | null;
   redemptionSettlementPrice: string;
@@ -119,7 +119,9 @@ export default function AssetDetailStatsSection(props: AssetDetailStatsSectionPr
           subtitle={
             holder()
               ? "Wallet-specific balances from the user endpoint."
-              : "Sign in with a linked wallet to view your balances."
+              : props.isWalletConnected
+                ? "Your wallet is connected. Balances will appear when the holder snapshot is available."
+                : "Sign in with a linked wallet to view your balances."
           }
           rows={
             holder()
@@ -144,24 +146,27 @@ export default function AssetDetailStatsSection(props: AssetDetailStatsSectionPr
                     ),
                   },
                 ]
-              : [
-                  {
-                    label: "Status",
-                    value: "Wallet not connected",
-                  },
-                  {
-                    label: "Updated",
-                    value: formatDateTime(props.asset.updated_at),
-                  },
-                  {
-                    label: "Valuation timestamp",
-                    value: formatUnixTimestamp(props.detail?.valuation?.onchain_updated_at),
-                  },
-                  {
-                    label: "Asset status",
-                    value: props.asset.asset_state_label,
-                  },
-                ]
+              : props.isWalletConnected
+                ? [
+                    {
+                      label: "Status",
+                      value: "Wallet connected",
+                    },
+                    {
+                      label: "Updated",
+                      value: formatDateTime(props.asset.updated_at),
+                    },
+                  ]
+                : [
+                    {
+                      label: "Status",
+                      value: "Wallet not connected",
+                    },
+                    {
+                      label: "Updated",
+                      value: formatDateTime(props.asset.updated_at),
+                    },
+                  ]
           }
         />
       </div>
