@@ -24,6 +24,7 @@ import AssetDetailStatsSection from "./AssetDetailStatsSection";
 import AssetDetailSummaryGrid from "./AssetDetailSummaryGrid";
 import {
   loadAssetHistoryRange,
+  patchCachedAssetDetail,
   primeAssetDetailBundle,
   readCachedAssetHistory,
   readCachedPaymentTokenQuote,
@@ -284,7 +285,7 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
     }
   };
 
-  const syncHolderState = async () => {
+  const syncHolderState = async (force = false) => {
     const currentAsset = asset();
     const walletAddress = authSession()?.user.wallet?.wallet_address?.trim();
 
@@ -292,7 +293,7 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
       return;
     }
 
-    if (detail()?.holder?.wallet_address === walletAddress) {
+    if (!force && detail()?.holder?.wallet_address === walletAddress) {
       return;
     }
 
@@ -315,6 +316,11 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
           holder,
         };
       });
+
+      patchCachedAssetDetail(currentAsset, {
+        asset: currentAsset,
+        holder,
+      });
     } catch {
       if (version !== holderRequestVersion) {
         return;
@@ -334,6 +340,21 @@ export default function AssetDetailScreen(props: AssetDetailScreenProps) {
         holder: response.holder,
       };
     });
+
+    patchCachedAssetDetail(response.asset, {
+      asset: response.asset,
+      holder: response.holder,
+    });
+
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        void syncHolderState(true);
+      }, 1500);
+
+      window.setTimeout(() => {
+        void syncHolderState(true);
+      }, 5000);
+    }
   };
 
   createEffect(() => {

@@ -2,6 +2,7 @@ import type {
   AssetDetailResponse,
   AssetHistoryResponse,
   AssetPaymentTokenQuoteResponse,
+  AssetHolderStateResponse,
   AssetResponse,
 } from "~/lib";
 
@@ -132,6 +133,31 @@ function writeCachedBundle(bundle: AssetDetailBundle) {
   for (const key of readCacheKeysForAsset(bundle.detail.asset)) {
     assetBundleCache.set(key, bundle);
   }
+}
+
+export function patchCachedAssetDetail(
+  asset: AssetResponse,
+  updates: Partial<Pick<AssetDetailResponse, "asset" | "holder">> & {
+    holder?: AssetHolderStateResponse | null;
+  },
+) {
+  const cachedBundle = readCachedBundle("public", asset.asset_address);
+
+  if (!cachedBundle) {
+    return;
+  }
+
+  const nextBundle: AssetDetailBundle = {
+    ...cachedBundle,
+    detail: {
+      ...cachedBundle.detail,
+      asset: updates.asset ?? asset,
+      holder:
+        updates.holder === undefined ? cachedBundle.detail.holder : updates.holder,
+    },
+  };
+
+  writeCachedBundle(nextBundle);
 }
 
 function buildBundleRequestKey(

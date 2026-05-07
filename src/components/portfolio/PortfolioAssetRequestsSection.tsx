@@ -285,6 +285,33 @@ export default function PortfolioAssetRequestsSection(
     return selectedRequestSummary();
   });
 
+  const requestStats = createMemo(() => {
+    const requests = assetRequests();
+
+    return [
+      {
+        label: "Total requests",
+        value: String(requests.length),
+      },
+      {
+        label: "In review",
+        value: String(
+          requests.filter(
+            request => request.status === "submitted" || request.status === "under_review",
+          ).length,
+        ),
+      },
+      {
+        label: "Approved",
+        value: String(requests.filter(request => request.status === "approved").length),
+      },
+      {
+        label: "Deployed",
+        value: String(requests.filter(request => request.status === "deployed").length),
+      },
+    ];
+  });
+
   const updateFormField = (field: keyof AssetRequestFormState, value: string | boolean) => {
     setForm(current => ({
       ...current,
@@ -478,7 +505,7 @@ export default function PortfolioAssetRequestsSection(
         const defaultAssetTypeId = form().asset_type_id.trim() || assetTypes()[0]?.asset_type_id || "";
 
         setSubmissionStatus("success");
-        setSubmissionSuccess("Asset request submitted. It now appears in your account queue.");
+        setSubmissionSuccess("Request submitted and added to your review queue.");
         setRequestDetail(response);
         setRequestDetailStatus("ready");
         setRequestDetailError(null);
@@ -506,8 +533,8 @@ export default function PortfolioAssetRequestsSection(
     <section class="pm-home__section">
       <div class="pm-home__section-head">
         <div>
-          <p class="pm-home__section-kicker">Requests</p>
-          <h2 class="pm-home__section-title">Asset Requests</h2>
+          <p class="pm-home__section-kicker">Issuance</p>
+          <h2 class="pm-home__section-title">Request Queue</h2>
         </div>
       </div>
 
@@ -515,10 +542,10 @@ export default function PortfolioAssetRequestsSection(
         <article class="pm-detail__card pm-detail__card--wide">
           <div class="pm-asset-request__toolbar">
             <div>
-              <h3 class="pm-detail__card-title">My Asset Requests</h3>
+              <h3 class="pm-detail__card-title">My Issuance Requests</h3>
               <p class="pm-detail__card-copy">
-                Review what you have submitted, inspect review notes, and monitor deployment
-                status from the same account surface as your portfolio.
+                Track every submission, review note, approval, and deployment update from the same
+                account workspace as your portfolio.
               </p>
             </div>
 
@@ -553,6 +580,17 @@ export default function PortfolioAssetRequestsSection(
             {message => <p class="pm-asset-request__feedback pm-asset-request__feedback--error">{message()}</p>}
           </Show>
 
+          <div class="pm-asset-request__summary-grid">
+            <For each={requestStats()}>
+              {stat => (
+                <article class="pm-asset-request__summary-card">
+                  <p class="pm-asset-request__detail-label">{stat.label}</p>
+                  <p class="pm-asset-request__summary-value">{stat.value}</p>
+                </article>
+              )}
+            </For>
+          </div>
+
           <div class="pm-asset-request__split">
             <div class="pm-asset-request__list-shell">
               <Show
@@ -564,7 +602,8 @@ export default function PortfolioAssetRequestsSection(
                       <div class="pm-asset-request__empty">
                         <p class="pm-detail__card-title">No requests yet</p>
                         <p class="pm-detail__card-copy">
-                          Submit your first asset request below to start the review workflow.
+                          Start a new submission below and it will appear here as soon as it enters
+                          the review queue.
                         </p>
                       </div>
                     }
@@ -613,7 +652,8 @@ export default function PortfolioAssetRequestsSection(
                       <div>
                         <h3 class="pm-detail__card-title">{request().asset_name}</h3>
                         <p class="pm-detail__card-copy">
-                          Submitted by {request().contact_name} on {formatDateTime(request().created_at)}
+                          {request().issuer_name} · submitted on{" "}
+                          {formatDateTime(request().created_at)}
                         </p>
                       </div>
                       <StatusPill status={request().status} />
@@ -790,8 +830,8 @@ export default function PortfolioAssetRequestsSection(
                 <div class="pm-asset-request__empty">
                   <p class="pm-detail__card-title">Select a request</p>
                   <p class="pm-detail__card-copy">
-                    Choose a submitted request from the list to inspect the full payload and any
-                    review updates.
+                    Select a submission to inspect pricing terms, issuer materials, and any review
+                    updates from the operations team.
                   </p>
                 </div>
               </Show>
@@ -809,10 +849,10 @@ export default function PortfolioAssetRequestsSection(
         <article class="pm-detail__card pm-detail__card--wide">
           <div class="pm-asset-request__form-head">
             <div>
-              <h3 class="pm-detail__card-title">Submit a New Asset Request</h3>
+              <h3 class="pm-detail__card-title">Start a New Submission</h3>
               <p class="pm-detail__card-copy">
-                This form posts directly to the authenticated user asset-request endpoint and keeps
-                the new submission visible in your portfolio workflow.
+                Create an issuance ticket for internal review. Once submitted, it stays visible in
+                this workspace for approval, rejection, or deployment follow-up.
               </p>
             </div>
           </div>
@@ -1067,7 +1107,7 @@ export default function PortfolioAssetRequestsSection(
                 class="pm-asset-request__control pm-asset-request__control--textarea"
                 value={form().description}
                 onInput={event => updateFormField("description", event.currentTarget.value)}
-                placeholder="Describe the issuer, asset structure, and why it belongs on the platform."
+                placeholder="Summarize the issuer, the instrument structure, and why this asset should be admitted."
                 required
               />
             </FormField>
@@ -1151,7 +1191,7 @@ export default function PortfolioAssetRequestsSection(
                 type="submit"
                 disabled={submissionStatus() === "submitting"}
               >
-                {submissionStatus() === "submitting" ? "Submitting..." : "Submit request"}
+                {submissionStatus() === "submitting" ? "Submitting..." : "Submit to review"}
               </button>
             </div>
           </form>
