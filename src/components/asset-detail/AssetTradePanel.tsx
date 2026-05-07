@@ -165,7 +165,7 @@ export default function AssetTradePanel(props: AssetTradePanelProps) {
 
   const inputHint = createMemo(() =>
     mode() === "buy"
-      ? `Enter how much ${props.paymentTokenMeta.symbol} you want to deploy.`
+      ? `Enter how much ${props.paymentTokenMeta.symbol} you want to buy.`
       : `Enter how many ${props.asset.symbol} tokens you want to redeem.`,
   );
 
